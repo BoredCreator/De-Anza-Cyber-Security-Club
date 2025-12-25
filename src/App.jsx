@@ -8,12 +8,15 @@ function App() {
   const [error, setError] = useState('')
   const [chatActive, setChatActive] = useState(false)
   const [name, setName] = useState('')
-  const [showName, setShowName] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
   const messagesEndRef = useRef(null)
   const pollingRef = useRef(null)
+  const chatTrackedRef = useRef(false)
 
   useEffect(() => {
     setLoaded(true)
+    // Track page view
+    trackVisit('page_view')
   }, [])
 
   useEffect(() => {
@@ -26,9 +29,7 @@ function App() {
     }
   }, [chatActive])
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  
 
   const fetchMessages = async () => {
     try {
@@ -39,6 +40,31 @@ function App() {
       }
     } catch (e) {
       console.error('Failed to fetch messages')
+    }
+  }
+
+  const getVisitorData = () => ({
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    language: navigator.language,
+    screen: `${window.screen.width}x${window.screen.height}`,
+    platform: navigator.platform,
+    referrer: document.referrer || 'Direct',
+    userAgent: navigator.userAgent
+  })
+
+  const trackVisit = async (type) => {
+    try {
+      const payload = { type }
+      if (type === 'chat_opened') {
+        payload.visitorData = getVisitorData()
+      }
+      await fetch('/api/track-visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+    } catch (e) {
+      // Silently fail - tracking shouldn't break the site
     }
   }
 
@@ -55,7 +81,14 @@ function App() {
 
     setError('')
     setSending(true)
-    if (!chatActive) setChatActive(true)
+    if (!chatActive) {
+      setChatActive(true)
+      // Track chat opened only once per session
+      if (!chatTrackedRef.current) {
+        chatTrackedRef.current = true
+        trackVisit('chat_opened')
+      }
+    }
 
     try {
       const res = await fetch('/api/send-message', {
@@ -78,8 +111,25 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="fixed inset-0 bg-gradient-to-br from-emerald-950/20 via-transparent to-cyan-950/20 pointer-events-none" />
+    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-100 text-zinc-900'}`}>
+      <div className={`fixed inset-0 pointer-events-none transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-emerald-950/20 via-transparent to-cyan-950/20' : 'bg-gradient-to-br from-emerald-100/40 via-transparent to-cyan-100/40'}`} />
+
+      {/* Light/Dark Mode Toggle */}
+      <button
+        onClick={() => setDarkMode(!darkMode)}
+        className={`fixed top-6 right-6 p-2.5 rounded-lg transition-all duration-300 hover:scale-110 hover:rotate-12 ${darkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400' : 'bg-white hover:bg-zinc-200 text-zinc-700 shadow-md'}`}
+        aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {darkMode ? (
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+          </svg>
+        ) : (
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+        )}
+      </button>
 
       <div className="relative max-w-3xl mx-auto px-6 py-16 md:py-24">
         <header className={`mb-16 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
@@ -91,49 +141,49 @@ function App() {
             />
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">DACC</h1>
-              <p className="text-zinc-500 text-sm font-mono">De Anza Cybersecurity Club</p>
+              <p className={`text-sm font-mono ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>De Anza Cybersecurity Club</p>
             </div>
           </div>
 
-          <div className="font-mono text-sm text-zinc-500 mb-6">
-            <span className="text-emerald-400">$</span> cat welcome.txt
+          <div className={`font-mono text-sm mb-6 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+            <span className={darkMode ? 'text-emerald-400' : 'text-emerald-600'}>$</span> cat welcome.txt
           </div>
 
-          <p className="text-lg text-zinc-300 leading-relaxed">
+          <p className={`text-lg leading-relaxed ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
             A student-led community for learning cybersecurity fundamentals,
             earning certifications, and getting hands-on with industry tools.
           </p>
         </header>
 
         <section className={`mb-16 transition-all duration-700 delay-100 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <div className="font-mono text-sm text-zinc-500 mb-4">
-            <span className="text-emerald-400">$</span> ls ./goals/
+          <div className={`font-mono text-sm mb-4 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+            <span className={darkMode ? 'text-emerald-400' : 'text-emerald-600'}>$</span> ls ./goals/
           </div>
 
           <div className="space-y-4">
-            <div className="group p-4 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors">
+            <div className={`group p-4 rounded-lg border transition-colors ${darkMode ? 'border-zinc-800 hover:border-zinc-700' : 'border-zinc-300 hover:border-zinc-400 bg-white/50'}`}>
               <h3 className="font-medium mb-1">Security Foundations</h3>
-              <p className="text-sm text-zinc-500">Core cybersecurity concepts applicable across all programming disciplines</p>
+              <p className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Core cybersecurity concepts applicable across all programming disciplines</p>
             </div>
 
-            <div className="group p-4 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors">
+            <div className={`group p-4 rounded-lg border transition-colors ${darkMode ? 'border-zinc-800 hover:border-zinc-700' : 'border-zinc-300 hover:border-zinc-400 bg-white/50'}`}>
               <h3 className="font-medium mb-1">Security+ Certification</h3>
-              <p className="text-sm text-zinc-500">Structured curriculum to help members achieve CompTIA Security+ certification</p>
+              <p className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Structured curriculum to help members achieve CompTIA Security+ certification</p>
             </div>
 
-            <div className="group p-4 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors">
+            <div className={`group p-4 rounded-lg border transition-colors ${darkMode ? 'border-zinc-800 hover:border-zinc-700' : 'border-zinc-300 hover:border-zinc-400 bg-white/50'}`}>
               <h3 className="font-medium mb-1">Hands-On Tools</h3>
-              <p className="text-sm text-zinc-500">Practical experience with Burp Suite, Nmap, Wireshark, and more</p>
+              <p className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Practical experience with Burp Suite, Nmap, Wireshark, and more</p>
             </div>
           </div>
         </section>
 
         <section className={`mb-16 transition-all duration-700 delay-300 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <div className="font-mono text-sm text-zinc-500 mb-4">
-            <span className="text-emerald-400">$</span> ./join.sh
+          <div className={`font-mono text-sm mb-4 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+            <span className={darkMode ? 'text-emerald-400' : 'text-emerald-600'}>$</span> ./join.sh
           </div>
 
-          <p className="text-zinc-400 mb-6">
+          <p className={`mb-6 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
             No prior experience required. Just bring curiosity and willingness to learn.
           </p>
 
@@ -154,7 +204,7 @@ function App() {
               href="https://docs.google.com/document/d/1-wV6SDBT-5YoyfhNu-sBbnQondH0kmZM/edit?usp=sharing&ouid=111115151815479546677&rtpof=true&sd=true"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 border border-zinc-700 hover:border-zinc-600 text-zinc-300 rounded-lg font-medium transition-colors"
+              className={`inline-flex items-center gap-2 px-5 py-2.5 border rounded-lg font-medium transition-colors ${darkMode ? 'border-zinc-700 hover:border-zinc-600 text-zinc-300' : 'border-zinc-400 hover:border-zinc-500 text-zinc-700'}`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -165,17 +215,17 @@ function App() {
         </section>
 
         <section className={`mb-16 transition-all duration-700 delay-400 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <div className="font-mono text-sm text-zinc-500 mb-4">
-            <span className="text-emerald-400">$</span> echo "message us" <span className="text-zinc-600"># yes this is live - #general</span>
+          <div className={`font-mono text-sm mb-4 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+            <span className={darkMode ? 'text-emerald-400' : 'text-emerald-600'}>$</span> echo "message us" <span className={darkMode ? 'text-zinc-600' : 'text-zinc-500'}># yes this is live - #general</span>
           </div>
 
           {chatActive && messages.length > 0 && (
             <div className="mb-4 max-h-48 overflow-y-auto space-y-1">
               {messages.map((msg) => (
                 <div key={msg.id} className="font-mono text-sm">
-                  <span className="text-zinc-600">[{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>{' '}
-                  <span className={msg.isWebhook ? 'text-cyan-500' : 'text-emerald-400'}>{msg.author}:</span>{' '}
-                  <span className="text-zinc-400">{parseContent(msg.content, msg.isWebhook)}</span>
+                  <span className={darkMode ? 'text-zinc-600' : 'text-zinc-500'}>[{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>{' '}
+                  <span className={msg.isWebhook ? 'text-cyan-500' : (darkMode ? 'text-emerald-400' : 'text-emerald-600')}>{msg.author}:</span>{' '}
+                  <span className={darkMode ? 'text-zinc-400' : 'text-zinc-600'}>{parseContent(msg.content, msg.isWebhook)}</span>
                 </div>
               ))}
               <div ref={messagesEndRef} />
@@ -190,43 +240,36 @@ function App() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 maxLength={500}
-                className="flex-1 px-3 py-2 bg-transparent border border-zinc-800 rounded-lg text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-700"
+                className={`flex-1 px-3 py-2 bg-transparent border rounded-lg text-sm focus:outline-none transition-colors ${darkMode ? 'border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-700' : 'border-zinc-300 text-zinc-900 placeholder-zinc-500 focus:border-zinc-400'}`}
               />
               <button
                 type="submit"
                 disabled={sending || !message.trim()}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-900 disabled:text-zinc-600 disabled:cursor-not-allowed text-zinc-100 rounded-lg text-sm font-medium transition-colors"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed ${darkMode ? 'bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-900 disabled:text-zinc-600 text-zinc-100' : 'bg-zinc-200 hover:bg-zinc-300 disabled:bg-zinc-100 disabled:text-zinc-400 text-zinc-900'}`}
               >
                 {sending ? '...' : 'Send'}
               </button>
             </div>
-            <div className="flex items-center gap-2">
-              {!showName ? (
-                <button
-                  type="button"
-                  onClick={() => setShowName(true)}
-                  className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-                >
-                  + add name
-                </button>
-              ) : (
-                <input
-                  type="text"
-                  placeholder="Your name (optional)"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={20}
-                  className="px-2 py-1 bg-transparent border border-zinc-800 rounded text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-700"
-                />
-              )}
+            <div className="group flex items-center gap-2">
+              <span className={`text-xs transition-colors ${darkMode ? 'text-zinc-600 group-hover:text-zinc-400' : 'text-zinc-500 group-hover:text-zinc-700'}`}>
+                + add name
+              </span>
+              <input
+                type="text"
+                placeholder="Username"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={20}
+                className={`w-0 opacity-0 group-hover:w-24 group-hover:opacity-100 focus:w-24 focus:opacity-100 px-2 py-1 bg-transparent border rounded text-xs focus:outline-none transition-all duration-200 ${darkMode ? 'border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-700' : 'border-zinc-300 text-zinc-900 placeholder-zinc-500 focus:border-zinc-400'}`}
+              />
             </div>
           </form>
           {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
         </section>
 
-        <footer className={`pt-8 border-t border-zinc-800 transition-all duration-700 delay-500 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <p className="text-sm text-zinc-600 font-mono">
-            <span className="text-emerald-400">$</span> De Anza College <span className="cursor-blink"></span>
+        <footer className={`pt-8 border-t transition-all duration-700 delay-500 ${darkMode ? 'border-zinc-800' : 'border-zinc-300'} ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <p className={`text-sm font-mono ${darkMode ? 'text-zinc-600' : 'text-zinc-500'}`}>
+            <span className={darkMode ? 'text-emerald-400' : 'text-emerald-600'}>$</span> De Anza College <span className="cursor-blink"></span>
           </p>
         </footer>
       </div>
