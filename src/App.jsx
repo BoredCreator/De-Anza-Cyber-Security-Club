@@ -9,11 +9,16 @@ function App() {
   const [chatActive, setChatActive] = useState(false)
   const [name, setName] = useState('')
   const [darkMode, setDarkMode] = useState(true)
+  const [onlineCount, setOnlineCount] = useState(null)
   const messagesEndRef = useRef(null)
   const pollingRef = useRef(null)
   const chatTrackedRef = useRef(false)
   const contentRef = useRef(null)
   const progressRef = useRef(null)
+  const scrollInitialized = useRef(false)
+  const chatOpenedAtRef = useRef(null)
+  const pingAudioRef = useRef(null)
+  const lastMessageCountRef = useRef(0)
 
   useEffect(() => {
     setLoaded(true)
@@ -21,17 +26,38 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!contentRef.current) return
+
+    const initScroll = () => {
+      if (scrollInitialized.current) return
+      const contentHeight = contentRef.current?.offsetHeight
+      if (contentHeight > 0) {
+        window.scrollTo({ top: contentHeight, behavior: 'instant' })
+        scrollInitialized.current = true
+      }
+    }
+
+    initScroll()
+    const timeout = setTimeout(initScroll, 100)
+    return () => clearTimeout(timeout)
+  }, [loaded])
+
+  useEffect(() => {
     const handleScroll = () => {
       if (!contentRef.current || !progressRef.current) return
 
       const scrollTop = window.scrollY
       const contentHeight = contentRef.current.offsetHeight
+      const maxScroll = contentHeight * 2
 
-      const progress = contentHeight > 0 ? ((scrollTop % contentHeight) / contentHeight) * 100 : 0
+      const normalizedPosition = ((scrollTop - contentHeight) % contentHeight + contentHeight) % contentHeight
+      const progress = contentHeight > 0 ? (normalizedPosition / contentHeight) * 100 : 0
       progressRef.current.style.transform = `scaleX(${Math.min(1, Math.max(0, progress / 100))})`
 
-      if (scrollTop >= contentHeight) {
+      if (scrollTop >= maxScroll) {
         window.scrollTo({ top: scrollTop - contentHeight, behavior: 'instant' })
+      } else if (scrollTop < contentHeight) {
+        window.scrollTo({ top: scrollTop + contentHeight, behavior: 'instant' })
       }
     }
 
@@ -47,7 +73,10 @@ function App() {
 
   useEffect(() => {
     if (chatActive) {
-      fetchMessages()
+      if (!chatOpenedAtRef.current) {
+        chatOpenedAtRef.current = Date.now()
+      }
+      fetchOnlineCount()
       pollingRef.current = setInterval(fetchMessages, 3000)
     }
     return () => {
@@ -60,11 +89,34 @@ function App() {
       const res = await fetch('/api/get-messages')
       if (res.ok) {
         const data = await res.json()
-        setMessages(data)
+        const openedAt = chatOpenedAtRef.current
+        if (!openedAt) return
+
+        const newMessages = data.filter(msg => new Date(msg.timestamp).getTime() > openedAt)
+
+        const prevCount = lastMessageCountRef.current
+        const hasNewResponse = newMessages.length > prevCount &&
+          newMessages.some(msg => !msg.isWebhook &&
+            new Date(msg.timestamp).getTime() > openedAt + 1000)
+
+        if (hasNewResponse && pingAudioRef.current) {
+          pingAudioRef.current.play().catch(() => {})
+        }
+
+        lastMessageCountRef.current = newMessages.length
+        setMessages(newMessages)
       }
-    } catch (e) {
-      console.error('Failed to fetch messages')
-    }
+    } catch (e) {}
+  }
+
+  const fetchOnlineCount = async () => {
+    try {
+      const res = await fetch('/api/get-online-count')
+      if (res.ok) {
+        const data = await res.json()
+        setOnlineCount(data.online)
+      }
+    } catch (e) {}
   }
 
   const getVisitorData = () => ({
@@ -112,6 +164,9 @@ function App() {
     e.preventDefault()
     if (!message.trim() || sending) return
 
+    const messageText = message.trim()
+    const displayName = name.trim() || 'visitor'
+
     setError('')
     setSending(true)
     if (!chatActive) {
@@ -122,20 +177,29 @@ function App() {
       }
     }
 
+    const optimisticMessage = {
+      id: `temp-${Date.now()}`,
+      content: messageText,
+      author: displayName,
+      timestamp: new Date().toISOString(),
+      isWebhook: true
+    }
+    setMessages(prev => [...prev, optimisticMessage])
+    setMessage('')
+
     try {
       const res = await fetch('/api/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message.trim(), name: name.trim() })
+        body: JSON.stringify({ message: messageText, name: displayName })
       })
 
-      if (res.ok) {
-        setMessage('')
-        setTimeout(fetchMessages, 500)
-      } else {
+      if (!res.ok) {
+        setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id))
         setError('Failed to send')
       }
     } catch (e) {
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id))
       setError('Failed to send')
     } finally {
       setSending(false)
@@ -232,15 +296,31 @@ function App() {
             <span className={`transition-colors duration-300 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>$</span> echo "message us" <span className={`transition-colors duration-300 ${darkMode ? 'text-zinc-600' : 'text-zinc-500'}`}># live chat - #general</span>
           </div>
 
-          {chatActive && messages.length > 0 && (
+          {chatActive && onlineCount !== null && (
+            <div className={`flex items-center gap-2 mb-3 text-xs font-mono ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              {onlineCount} online
+            </div>
+          )}
+
+          {chatActive && (
             <div className="mb-4 max-h-48 overflow-y-auto space-y-1">
-              {messages.map((msg) => (
-                <div key={msg.id} className="font-mono text-sm">
-                  <span className={darkMode ? 'text-zinc-600' : 'text-zinc-500'}>[{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>{' '}
-                  <span className={msg.isWebhook ? 'text-cyan-500' : (darkMode ? 'text-emerald-400' : 'text-emerald-600')}>{msg.author}:</span>{' '}
-                  <span className={darkMode ? 'text-zinc-400' : 'text-zinc-600'}>{parseContent(msg.content, msg.isWebhook)}</span>
-                </div>
-              ))}
+              {messages.length === 0 ? (
+                <p className={`text-xs font-mono ${darkMode ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                  May not get a response immediately
+                </p>
+              ) : (
+                messages.map((msg) => (
+                  <div key={msg.id} className="font-mono text-sm">
+                    <span className={darkMode ? 'text-zinc-600' : 'text-zinc-500'}>[{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>{' '}
+                    <span className={msg.isWebhook ? 'text-cyan-500' : (darkMode ? 'text-emerald-400' : 'text-emerald-600')}>{msg.author}:</span>{' '}
+                    <span className={darkMode ? 'text-zinc-400' : 'text-zinc-600'}>{parseContent(msg.content, msg.isWebhook)}</span>
+                  </div>
+                ))
+              )}
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -291,6 +371,7 @@ function App() {
 
   return (
     <div className={`transition-colors duration-300 ${darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-100 text-zinc-900'}`}>
+      <audio ref={pingAudioRef} src="/discord_ping_sound_effect.mp3" preload="auto" />
       <div
         ref={progressRef}
         className="fixed top-0 left-0 w-full h-0.5 bg-emerald-500 z-50 origin-left"
@@ -314,6 +395,8 @@ function App() {
           </svg>
         )}
       </button>
+
+      <div aria-hidden="true">{renderContent(true)}</div>
 
       <div ref={contentRef}>{renderContent(false)}</div>
 
