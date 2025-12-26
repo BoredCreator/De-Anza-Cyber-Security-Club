@@ -57,9 +57,9 @@ function App() {
       // Clone 2 starts after Clone 1 + Content
       const clone2Start = cloneHeight + contentHeight
 
-      // Progress bar tracks position within the clone content cycle
-      const normalizedPosition = ((scrollTop - cloneHeight) % cloneHeight + cloneHeight) % cloneHeight
-      const progress = cloneHeight > 0 ? (normalizedPosition / cloneHeight) * 100 : 0
+      // Progress bar tracks position through the content section (0-100%)
+      const scrollInContent = Math.max(0, scrollTop - cloneHeight)
+      const progress = contentHeight > 0 ? (scrollInContent / contentHeight) * 100 : 0
       progressRef.current.style.transform = `scaleX(${Math.min(1, Math.max(0, progress / 100))})`
 
       // Wrap when entering Clone 2 (scrolling down past content)
@@ -228,7 +228,7 @@ function App() {
             className="w-14 h-14 rounded-lg"
           />
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight transition-colors duration-300">DACC</h1>
+            <h1 className={`text-2xl font-semibold tracking-tight transition-colors duration-300 ${darkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>DACC</h1>
             <p className={`text-sm font-mono transition-colors duration-300 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>De Anza Cybersecurity Club</p>
           </div>
         </div>
