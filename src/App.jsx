@@ -20,6 +20,9 @@ function App() {
   const cloneRef = useRef(null)
   const progressRef = useRef(null)
   const scrollInitialized = useRef(false)
+  const isTouchingRef = useRef(false)
+  const scrollTimeoutRef = useRef(null)
+  const hasTouchedRef = useRef(false)
   const chatOpenedAtRef = useRef(null)
   const pingAudioRef = useRef(null)
   const lastMessageCountRef = useRef(0)
@@ -47,6 +50,14 @@ function App() {
   }, [loaded])
 
   useEffect(() => {
+    let pendingWrap = null
+
+    const performWrap = () => {
+      if (!pendingWrap || isTouchingRef.current) return
+      window.scrollTo({ top: pendingWrap, behavior: 'instant' })
+      pendingWrap = null
+    }
+
     const handleScroll = () => {
       if (!cloneRef.current || !contentRef.current || !progressRef.current) return
 
@@ -62,18 +73,61 @@ function App() {
       const progress = contentHeight > 0 ? (scrollInContent / contentHeight) * 100 : 0
       progressRef.current.style.transform = `scaleX(${Math.min(1, Math.max(0, progress / 100))})`
 
-      // Wrap when entering Clone 2 (scrolling down past content)
+      // Calculate wrap target
+      let wrapTarget = null
       if (scrollTop >= clone2Start) {
-        window.scrollTo({ top: scrollTop - contentHeight, behavior: 'instant' })
+        wrapTarget = scrollTop - contentHeight
+      } else if (scrollTop < cloneHeight) {
+        wrapTarget = scrollTop + contentHeight
       }
-      // Wrap when entering Clone 1 (scrolling up past content start)
-      else if (scrollTop < cloneHeight) {
-        window.scrollTo({ top: scrollTop + contentHeight, behavior: 'instant' })
+
+      if (wrapTarget !== null) {
+        // Desktop (no touch detected) - immediate wrap
+        if (!hasTouchedRef.current) {
+          window.scrollTo({ top: wrapTarget, behavior: 'instant' })
+        }
+        // Touch device - defer wrap until momentum stops
+        else if (isTouchingRef.current) {
+          pendingWrap = wrapTarget
+        } else {
+          // Touch ended, momentum may still be active - debounce
+          pendingWrap = wrapTarget
+          if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current)
+          }
+          scrollTimeoutRef.current = setTimeout(performWrap, 100)
+        }
+      }
+    }
+
+    const handleTouchStart = () => {
+      hasTouchedRef.current = true
+      isTouchingRef.current = true
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+
+    const handleTouchEnd = () => {
+      isTouchingRef.current = false
+      // Wait for momentum to settle before wrapping
+      if (pendingWrap !== null) {
+        scrollTimeoutRef.current = setTimeout(performWrap, 250)
       }
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd, { passive: true })
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchend', handleTouchEnd)
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
