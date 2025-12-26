@@ -327,7 +327,7 @@ function App() {
       {!isClone && (
         <section className={`mb-16 transition-all duration-700 delay-400 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <div className={`font-mono text-sm mb-4 transition-colors duration-300 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
-            <span className={`transition-colors duration-300 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>$</span> echo "message us" <span className={`transition-colors duration-300 ${darkMode ? 'text-zinc-600' : 'text-zinc-500'}`}># live chat - #general</span>
+            <span className={`transition-colors duration-300 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>$</span> echo "message us" <span className={`transition-colors duration-300 ${darkMode ? 'text-zinc-600' : 'text-zinc-500'}`}># live chat (might not respond immediately) - #general</span>
           </div>
 
           {chatActive && onlineCount !== null && (
