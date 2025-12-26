@@ -312,13 +312,10 @@ function App() {
             href="/petition"
             className={`group block p-5 rounded-xl border transition-all duration-300 ${darkMode ? 'border-zinc-800 hover:border-emerald-800 bg-zinc-900/50 hover:bg-emerald-950/30' : 'border-zinc-300 hover:border-emerald-300 bg-white/50 hover:bg-emerald-50/50'}`}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className={`font-medium mb-1 transition-colors duration-300 ${darkMode ? 'text-zinc-100 group-hover:text-emerald-400' : 'text-zinc-900 group-hover:text-emerald-600'}`}>
-                  Sign the Club Petition
-                </h3>
-                
-              </div>
+            <div className="flex items-center justify-center gap-2">
+              <h3 className={`font-medium transition-colors duration-300 ${darkMode ? 'text-zinc-100 group-hover:text-emerald-400' : 'text-zinc-900 group-hover:text-emerald-600'}`}>
+                Sign the Club Petition
+              </h3>
               <svg className={`w-5 h-5 transition-all duration-300 group-hover:translate-x-1 ${darkMode ? 'text-zinc-600 group-hover:text-emerald-400' : 'text-zinc-400 group-hover:text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
