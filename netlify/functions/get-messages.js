@@ -10,6 +10,14 @@ export async function handler(event) {
     return { statusCode: 500, body: 'Bot not configured' }
   }
 
+  // Get the 'after' timestamp from query params
+  const params = new URLSearchParams(event.rawQuery || '')
+  const afterTimestamp = params.get('after')
+
+  if (!afterTimestamp) {
+    return { statusCode: 400, body: 'Missing after timestamp' }
+  }
+
   try {
     const response = await fetch(
       `https://discord.com/api/v10/channels/${channelId}/messages?limit=50`,
@@ -26,15 +34,20 @@ export async function handler(event) {
     }
 
     const messages = await response.json()
+    const afterMs = parseInt(afterTimestamp, 10)
 
-    const formatted = messages.map((msg) => ({
-      id: msg.id,
-      content: msg.content,
-      author: msg.author.username,
-      isBot: msg.author.bot || false,
-      isWebhook: msg.webhook_id != null,
-      timestamp: msg.timestamp
-    })).reverse()
+    // Filter to only messages after the provided timestamp
+    const formatted = messages
+      .filter((msg) => new Date(msg.timestamp).getTime() > afterMs)
+      .map((msg) => ({
+        id: msg.id,
+        content: msg.content,
+        author: msg.author.username,
+        isBot: msg.author.bot || false,
+        isWebhook: msg.webhook_id != null,
+        timestamp: msg.timestamp
+      }))
+      .reverse()
 
     return {
       statusCode: 200,

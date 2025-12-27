@@ -102,25 +102,24 @@ function App() {
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch('/api/get-messages')
+      const openedAt = chatOpenedAtRef.current
+      if (!openedAt) return
+
+      const res = await fetch(`/api/get-messages?after=${openedAt}`)
       if (res.ok) {
         const data = await res.json()
-        const openedAt = chatOpenedAtRef.current
-        if (!openedAt) return
-
-        const newMessages = data.filter(msg => new Date(msg.timestamp).getTime() > openedAt)
 
         const prevCount = lastMessageCountRef.current
-        const hasNewResponse = newMessages.length > prevCount &&
-          newMessages.some(msg => !msg.isWebhook &&
+        const hasNewResponse = data.length > prevCount &&
+          data.some(msg => !msg.isWebhook &&
             new Date(msg.timestamp).getTime() > openedAt + 1000)
 
         if (hasNewResponse && pingAudioRef.current) {
           pingAudioRef.current.play().catch(() => {})
         }
 
-        lastMessageCountRef.current = newMessages.length
-        setMessages(newMessages)
+        lastMessageCountRef.current = data.length
+        setMessages(data)
       }
     } catch (e) {}
   }
