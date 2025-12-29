@@ -3,6 +3,8 @@ import { Document, Page, pdfjs } from 'react-pdf'
 import SignatureCanvas from 'react-signature-canvas'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
+import Toggle from './components/Toggle'
+import Footer from './components/Footer'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
@@ -24,6 +26,8 @@ interface InstructorForm {
 function Petition() {
   const [numPages, setNumPages] = useState<number | null>(null)
   const [pdfExpanded, setPdfExpanded] = useState(false)
+  const [pdfSheetOpen, setPdfSheetOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const [isInstructor, setIsInstructor] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -46,6 +50,10 @@ function Petition() {
 
   useEffect(() => {
     setTimeout(() => setLoaded(true), 100)
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
   useEffect(() => {
@@ -195,24 +203,27 @@ function Petition() {
 
         {/* PDF Viewer */}
         <div
-          className={`relative mb-8 rounded-lg overflow-hidden transition-all duration-500 ease-out border border-matrix/20 ${
-            pdfExpanded ? 'max-h-[600px]' : 'max-h-48'
-          } ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          className={`relative mb-8 rounded-lg overflow-hidden transition-all duration-500 ease-out border border-matrix/20 ${!isMobile && pdfExpanded ? 'max-h-[600px]' : 'max-h-48'
+            } ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           style={{ transitionDelay: '100ms' }}
-          onMouseEnter={() => setPdfExpanded(true)}
-          onMouseLeave={() => setPdfExpanded(false)}
+          onMouseEnter={() => !isMobile && setPdfExpanded(true)}
+          onMouseLeave={() => !isMobile && setPdfExpanded(false)}
+          onClick={() => isMobile && setPdfSheetOpen(true)}
         >
-          <div className={`absolute inset-x-0 bottom-0 h-24 z-10 pointer-events-none transition-opacity duration-300 ${pdfExpanded ? 'opacity-0' : 'opacity-100'} bg-gradient-to-t from-terminal-bg to-transparent`} />
+          <div className={`absolute inset-x-0 bottom-0 h-24 z-10 pointer-events-none transition-opacity duration-300 ${!isMobile && pdfExpanded ? 'opacity-0' : 'opacity-100'} bg-gradient-to-t from-terminal-bg to-transparent`} />
 
-          {!pdfExpanded && (
-            <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-              <span className="px-4 py-2 rounded-lg text-sm border border-matrix/30 bg-terminal-bg/90 text-matrix font-terminal">
-                HOVER TO EXPAND
+          {(isMobile || !pdfExpanded) && (
+            <div className={`absolute inset-0 flex items-center justify-center z-20 ${isMobile ? 'cursor-pointer' : 'pointer-events-none'}`}>
+              <span
+                className="px-4 py-2 rounded-lg text-sm font-terminal font-semibold"
+                style={{ backgroundColor: '#00ff41', color: '#000000' }}
+              >
+                {isMobile ? 'TAP TO EXPAND' : 'HOVER TO EXPAND'}
               </span>
             </div>
           )}
 
-          <div className={`overflow-y-auto transition-all duration-500 ${pdfExpanded ? 'max-h-[600px]' : 'max-h-48'}`}>
+          <div className={`overflow-y-auto transition-all duration-500 ${!isMobile && pdfExpanded ? 'max-h-[600px]' : 'max-h-48'}`}>
             <Document
               file="/Petition-to-Organize-a-New-Club-Fillable (1)-1.pdf"
               onLoadSuccess={onDocumentLoadSuccess}
@@ -231,7 +242,7 @@ function Petition() {
                 <Page
                   key={`page_${index + 1}`}
                   pageNumber={index + 1}
-                  width={800}
+                  width={isMobile ? window.innerWidth - 48 : 800}
                   className="mx-auto"
                   renderTextLayer={false}
                   renderAnnotationLayer={false}
@@ -241,35 +252,60 @@ function Petition() {
           </div>
         </div>
 
+        {/* Mobile PDF Sheet */}
+        {pdfSheetOpen && (
+          <div className="fixed inset-0 z-50 bg-terminal-bg/95 backdrop-blur-sm">
+            <div className="absolute top-4 right-4 z-10">
+              <button
+                onClick={() => setPdfSheetOpen(false)}
+                className="w-10 h-10 rounded-full bg-matrix/20 border border-matrix flex items-center justify-center hover:bg-matrix/30 transition-colors"
+              >
+                <svg className="w-6 h-6 text-matrix" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="h-full overflow-y-auto p-4 pt-16">
+              <Document
+                file="/Petition-to-Organize-a-New-Club-Fillable (1)-1.pdf"
+                onLoadSuccess={onDocumentLoadSuccess}
+                loading={
+                  <div className="flex items-center justify-center h-48 text-gray-500 font-terminal">
+                    <span className="neon-pulse">Loading document...</span>
+                  </div>
+                }
+                error={
+                  <div className="flex items-center justify-center h-48 text-hack-red font-terminal">
+                    [ERROR] Failed to load PDF
+                  </div>
+                }
+              >
+                {Array.from(new Array(numPages), (_, index) => (
+                  <Page
+                    key={`sheet_page_${index + 1}`}
+                    pageNumber={index + 1}
+                    width={window.innerWidth - 32}
+                    className="mx-auto mb-4"
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                  />
+                ))}
+              </Document>
+            </div>
+          </div>
+        )}
+
         {/* Toggle */}
         <div
-          className={`flex items-center gap-4 mb-8 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          className={`mb-8 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           style={{ transitionDelay: '200ms' }}
         >
-          <span className={`text-sm font-terminal transition-all ${!isInstructor ? 'text-matrix neon-text-subtle' : 'text-gray-600'}`}>
-            STUDENT
-          </span>
-          <button
-            type="button"
-            onClick={() => setIsInstructor(!isInstructor)}
-            className={`relative w-14 h-7 rounded-full transition-all border ${
-              isInstructor
-                ? 'bg-matrix/20 border-matrix'
-                : 'bg-terminal-alt border-gray-700'
-            }`}
-          >
-            <span
-              className={`absolute top-1 w-5 h-5 rounded-full transition-all duration-200 ${
-                isInstructor
-                  ? 'left-8 bg-matrix'
-                  : 'left-1 bg-gray-500'
-              }`}
-              style={isInstructor ? { boxShadow: '0 0 10px rgba(0, 255, 65, 0.6)' } : {}}
-            />
-          </button>
-          <span className={`text-sm font-terminal transition-all ${isInstructor ? 'text-matrix neon-text-subtle' : 'text-gray-600'}`}>
-            INSTRUCTOR
-          </span>
+          <Toggle
+            isActive={isInstructor}
+            onToggle={setIsInstructor}
+            leftLabel="STUDENT"
+            rightLabel="INSTRUCTOR"
+          />
         </div>
 
         {/* Form */}
@@ -437,6 +473,8 @@ function Petition() {
             )}
           </button>
         </form>
+
+        <Footer />
       </div>
     </div>
   )
