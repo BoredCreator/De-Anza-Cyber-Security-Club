@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Footer from './components/Footer'
 
+const prefetchPetition = () => import('./Petition')
+
 interface Message {
   id: string
   content: string
@@ -280,11 +282,13 @@ function App() {
         <a
           href="/petition"
           className="group block relative overflow-hidden rounded-xl border-2 border-matrix bg-gradient-to-br from-matrix/10 via-terminal-bg to-matrix/5 p-8 transition-all duration-300 hover:shadow-neon-strong hover:scale-[1.02]"
+          onMouseEnter={prefetchPetition}
+          onFocus={prefetchPetition}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-matrix/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
           <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-xl bg-matrix/20 border border-matrix/50 flex items-center justify-center shadow-neon">
+            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-5">
+              <div className="w-16 h-16 rounded-xl bg-matrix/20 border border-matrix/50 flex items-center justify-center shadow-neon flex-shrink-0">
                 <svg className="w-8 h-8 text-matrix neon-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
@@ -293,7 +297,7 @@ function App() {
                 <h3 className="text-xl font-bold text-matrix neon-text tracking-wide mb-1">
                   SIGN THE CLUB PETITION
                 </h3>
-                <p className="text-gray-400">Help establish DACC as an official De Anza club</p>
+                <p className="text-gray-400 text-sm md:text-base">Help establish DACC as an official De Anza club</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -534,8 +538,7 @@ function App() {
       <section className={`mb-16 transition-all duration-700 delay-400 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         <div className="flex items-center gap-3 mb-6">
           <span className="text-matrix neon-text-subtle text-lg">$</span>
-          <span className="text-gray-400 font-terminal">nc -l discord.dacc 443</span>
-          <span className="text-gray-600 text-sm"># live channel</span>
+          <span className="text-gray-400 font-terminal">cat /dev/discord</span>
         </div>
 
         <div className="terminal-window">

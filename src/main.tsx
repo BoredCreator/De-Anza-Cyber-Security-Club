@@ -1,17 +1,28 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App'
-import Petition from './Petition'
 import './index.css'
+
+const Petition = lazy(() => import('./Petition'))
+
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-terminal-bg text-matrix flex items-center justify-center">
+    <div className="text-center">
+      <div className="font-terminal text-lg neon-pulse">Loading...</div>
+    </div>
+  </div>
+)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/petition" element={<Petition />} />
-      </Routes>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/petition" element={<Petition />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   </React.StrictMode>,
 )
