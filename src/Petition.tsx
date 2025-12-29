@@ -28,10 +28,7 @@ function Petition() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('darkMode')
-    return saved !== null ? JSON.parse(saved) : true
-  })
+  const [loaded, setLoaded] = useState(false)
   const sigCanvas = useRef<SignatureCanvas>(null)
 
   const [studentForm, setStudentForm] = useState<StudentForm>({
@@ -48,22 +45,19 @@ function Petition() {
   })
 
   useEffect(() => {
-    const bgColor = darkMode ? '#09090b' : '#f4f4f5'
-    document.documentElement.style.backgroundColor = bgColor
-    document.body.style.backgroundColor = bgColor
-    localStorage.setItem('darkMode', JSON.stringify(darkMode))
-  }, [darkMode])
+    setTimeout(() => setLoaded(true), 100)
+  }, [])
 
   useEffect(() => {
     if (sigCanvas.current) {
       const canvas = sigCanvas.current.getCanvas()
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        ctx.fillStyle = darkMode ? 'rgb(24, 24, 27)' : 'rgb(244, 244, 245)'
+        ctx.fillStyle = '#0a0a0a'
         ctx.fillRect(0, 0, canvas.width, canvas.height)
       }
     }
-  }, [darkMode])
+  }, [])
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
@@ -75,7 +69,7 @@ function Petition() {
       const canvas = sigCanvas.current.getCanvas()
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        ctx.fillStyle = darkMode ? 'rgb(24, 24, 27)' : 'rgb(244, 244, 245)'
+        ctx.fillStyle = '#0a0a0a'
         ctx.fillRect(0, 0, canvas.width, canvas.height)
       }
     }
@@ -94,7 +88,7 @@ function Petition() {
     setError('')
 
     if (sigCanvas.current?.isEmpty()) {
-      setError('Please provide your signature')
+      setError('[ERROR] Signature required for authentication')
       return
     }
 
@@ -120,7 +114,7 @@ function Petition() {
       }
       clearSignature()
     } catch (err) {
-      setError('Failed to submit. Please try again.')
+      setError('[ERROR] Transmission failed. Retry.')
       console.error(err)
     } finally {
       setSubmitting(false)
@@ -129,35 +123,42 @@ function Petition() {
 
   if (submitted) {
     return (
-      <div className={`min-h-screen flex items-center justify-center p-6 transition-colors duration-300 ${darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-100 text-zinc-900'}`}>
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className={`fixed top-6 right-6 z-40 p-2.5 rounded-lg transition-all duration-300 hover:scale-110 hover:rotate-12 ${darkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400' : 'bg-white hover:bg-zinc-200 text-zinc-700 shadow-md'}`}
-          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {darkMode ? (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-            </svg>
-          )}
-        </button>
-        <div className="text-center">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${darkMode ? 'bg-cyber-500/20' : 'bg-cyber-100'}`}>
-            <svg className={`w-8 h-8 ${darkMode ? 'text-cyber-400' : 'text-cyber-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen bg-terminal-bg text-matrix flex items-center justify-center p-6">
+        <div className="crt-overlay" />
+        <div className="text-center relative z-10">
+          <div className="w-20 h-20 rounded-lg bg-matrix/10 border border-matrix/30 flex items-center justify-center mx-auto mb-6 neon-box">
+            <svg className="w-10 h-10 text-matrix" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-semibold mb-2">Thank You!</h2>
-          <p className={`mb-6 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Your signature has been recorded.</p>
-          <a href="/"
-
-            className="px-6 py-2 bg-cyber-600 hover:bg-cyber-500 text-white rounded-lg font-medium transition-colors"
+          <div className="terminal-window max-w-md mx-auto">
+            <div className="terminal-header">
+              <div className="terminal-dot red" />
+              <div className="terminal-dot yellow" />
+              <div className="terminal-dot green" />
+              <span className="ml-4 text-xs text-gray-500 font-terminal">success</span>
+            </div>
+            <div className="terminal-body text-left">
+              <p className="text-matrix mb-2">
+                <span className="text-hack-cyan">[SUCCESS]</span> Signature authenticated
+              </p>
+              <p className="text-gray-500 text-sm mb-4">
+                Your identity has been verified and recorded in the database.
+              </p>
+              <div className="text-xs text-gray-600 mb-4">
+                <span className="text-matrix">STATUS:</span> COMPLETE |
+                <span className="text-matrix ml-2">TX:</span> CONFIRMED
+              </div>
+            </div>
+          </div>
+          <a
+            href="/"
+            className="btn-hack-filled rounded-lg inline-flex items-center gap-2 mt-6"
           >
-            Home
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            RETURN TO BASE
           </a>
         </div>
       </div>
@@ -165,51 +166,48 @@ function Petition() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-100 text-zinc-900'}`}>
-      <div className={`fixed inset-0 pointer-events-none transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-cyber-950/20 via-transparent to-cyan-950/20' : 'bg-gradient-to-br from-cyber-100/40 via-transparent to-cyan-100/40'}`} />
+    <div className="min-h-screen bg-terminal-bg text-matrix">
+      <div className="crt-overlay" />
 
-      <button
-        onClick={() => setDarkMode(!darkMode)}
-        className={`fixed top-6 right-6 z-40 p-2.5 rounded-lg transition-all duration-300 hover:scale-110 hover:rotate-12 ${darkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400' : 'bg-white hover:bg-zinc-200 text-zinc-700 shadow-md'}`}
-        aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-      >
-        {darkMode ? (
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
-          </svg>
-        ) : (
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-          </svg>
-        )}
-      </button>
-
-      <div className="relative max-w-5xl mx-auto px-6 py-12">
-        <header className="mb-8">
-          <a href="/" className={`inline-flex items-center gap-2 transition-colors mb-6 ${darkMode ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-500 hover:text-zinc-700'}`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-12">
+        {/* Header */}
+        <header className={`mb-8 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-matrix transition-colors mb-6 group"
+          >
+            <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to home
+            <span className="font-terminal text-sm">cd ..</span>
           </a>
-          <h1 className="text-3xl font-semibold tracking-tight mb-2">Club Petition</h1>
-          <p className={darkMode ? 'text-zinc-400' : 'text-zinc-600'}>Sign the petition to help establish DACC as an official club.</p>
+
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-matrix neon-text-subtle text-lg">$</span>
+            <span className="text-gray-400 font-terminal">./petition --sign</span>
+          </div>
+
+          <h1 className="text-3xl font-bold neon-text tracking-tight mb-2">CLUB PETITION</h1>
+          <p className="text-gray-500">
+            <span className="text-hack-cyan">[INFO]</span> Sign to help establish DACC as an official club
+          </p>
         </header>
 
         {/* PDF Viewer */}
         <div
-          className={`relative mb-8 rounded-xl border overflow-hidden transition-all duration-500 ease-out ${
-            darkMode ? 'border-zinc-800' : 'border-zinc-300'
-          } ${pdfExpanded ? 'max-h-[600px]' : 'max-h-48'}`}
+          className={`relative mb-8 rounded-lg overflow-hidden transition-all duration-500 ease-out border border-matrix/20 ${
+            pdfExpanded ? 'max-h-[600px]' : 'max-h-48'
+          } ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={{ transitionDelay: '100ms' }}
           onMouseEnter={() => setPdfExpanded(true)}
           onMouseLeave={() => setPdfExpanded(false)}
         >
-          <div className={`absolute inset-x-0 bottom-0 h-24 z-10 pointer-events-none transition-opacity duration-300 ${pdfExpanded ? 'opacity-0' : 'opacity-100'} ${darkMode ? 'bg-gradient-to-t from-zinc-950 to-transparent' : 'bg-gradient-to-t from-zinc-100 to-transparent'}`} />
+          <div className={`absolute inset-x-0 bottom-0 h-24 z-10 pointer-events-none transition-opacity duration-300 ${pdfExpanded ? 'opacity-0' : 'opacity-100'} bg-gradient-to-t from-terminal-bg to-transparent`} />
 
           {!pdfExpanded && (
             <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-              <span className={`px-4 py-2 rounded-lg text-sm border ${darkMode ? 'bg-zinc-900/90 text-zinc-400 border-zinc-700' : 'bg-white/90 text-zinc-600 border-zinc-300'}`}>
-                Hover to expand
+              <span className="px-4 py-2 rounded-lg text-sm border border-matrix/30 bg-terminal-bg/90 text-matrix font-terminal">
+                HOVER TO EXPAND
               </span>
             </div>
           )}
@@ -219,13 +217,13 @@ function Petition() {
               file="/Petition-to-Organize-a-New-Club-Fillable (1)-1.pdf"
               onLoadSuccess={onDocumentLoadSuccess}
               loading={
-                <div className={`flex items-center justify-center h-48 ${darkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
-                  Loading PDF...
+                <div className="flex items-center justify-center h-48 text-gray-500 font-terminal">
+                  <span className="neon-pulse">Loading document...</span>
                 </div>
               }
               error={
-                <div className="flex items-center justify-center h-48 text-red-400">
-                  Failed to load PDF
+                <div className="flex items-center justify-center h-48 text-hack-red font-terminal">
+                  [ERROR] Failed to load PDF
                 </div>
               }
             >
@@ -244,184 +242,199 @@ function Petition() {
         </div>
 
         {/* Toggle */}
-        <div className="flex items-center gap-4 mb-6">
-          <span className={`text-sm font-medium transition-colors ${!isInstructor ? (darkMode ? 'text-cyber-400 cyber-text-glow' : 'text-cyber-600') : (darkMode ? 'text-zinc-500' : 'text-zinc-500')}`}>
-            Student
+        <div
+          className={`flex items-center gap-4 mb-8 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={{ transitionDelay: '200ms' }}
+        >
+          <span className={`text-sm font-terminal transition-all ${!isInstructor ? 'text-matrix neon-text-subtle' : 'text-gray-600'}`}>
+            STUDENT
           </span>
           <button
             type="button"
             onClick={() => setIsInstructor(!isInstructor)}
-            className={`relative w-12 h-6 rounded-full transition-colors ${isInstructor ? 'bg-cyber-600' : (darkMode ? 'bg-zinc-700' : 'bg-zinc-300')}`}
+            className={`relative w-14 h-7 rounded-full transition-all border ${
+              isInstructor
+                ? 'bg-matrix/20 border-matrix'
+                : 'bg-terminal-alt border-gray-700'
+            }`}
           >
             <span
-              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all duration-200 ${
-                isInstructor ? 'translate-x-6' : 'translate-x-0'
+              className={`absolute top-1 w-5 h-5 rounded-full transition-all duration-200 ${
+                isInstructor
+                  ? 'left-8 bg-matrix'
+                  : 'left-1 bg-gray-500'
               }`}
+              style={isInstructor ? { boxShadow: '0 0 10px rgba(0, 255, 65, 0.6)' } : {}}
             />
           </button>
-          <span className={`text-sm font-medium transition-colors ${isInstructor ? (darkMode ? 'text-cyber-400 cyber-text-glow' : 'text-cyber-600') : (darkMode ? 'text-zinc-500' : 'text-zinc-500')}`}>
-            Instructor
+          <span className={`text-sm font-terminal transition-all ${isInstructor ? 'text-matrix neon-text-subtle' : 'text-gray-600'}`}>
+            INSTRUCTOR
           </span>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {!isInstructor ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={studentForm.name}
-                  onChange={handleStudentChange}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none transition-colors ${
-                    darkMode
-                      ? 'bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-600'
-                      : 'bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400'
-                  }`}
-                  placeholder="Full name"
-                />
-              </div>
-              <div>
-                <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Student ID</label>
-                <input
-                  type="text"
-                  name="studentId"
-                  value={studentForm.studentId}
-                  onChange={handleStudentChange}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none transition-colors ${
-                    darkMode
-                      ? 'bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-600'
-                      : 'bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400'
-                  }`}
-                  placeholder="e.g. 12345678"
-                />
-              </div>
-              <div>
-                <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={studentForm.email}
-                  onChange={handleStudentChange}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none transition-colors ${
-                    darkMode
-                      ? 'bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-600'
-                      : 'bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400'
-                  }`}
-                  placeholder="your@email.com"
-                />
-              </div>
+        <form
+          onSubmit={handleSubmit}
+          className={`space-y-6 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={{ transitionDelay: '300ms' }}
+        >
+          <div className="terminal-window">
+            <div className="terminal-header">
+              <div className="terminal-dot red" />
+              <div className="terminal-dot yellow" />
+              <div className="terminal-dot green" />
+              <span className="ml-4 text-xs text-gray-500 font-terminal">
+                {isInstructor ? 'instructor_data.sh' : 'student_data.sh'}
+              </span>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={instructorForm.name}
-                  onChange={handleInstructorChange}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none transition-colors ${
-                    darkMode
-                      ? 'bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-600'
-                      : 'bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400'
-                  }`}
-                  placeholder="Full name"
-                />
-              </div>
-              <div>
-                <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Office</label>
-                <input
-                  type="text"
-                  name="office"
-                  value={instructorForm.office}
-                  onChange={handleInstructorChange}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none transition-colors ${
-                    darkMode
-                      ? 'bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-600'
-                      : 'bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400'
-                  }`}
-                  placeholder="Office location"
-                />
-              </div>
-              <div>
-                <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Phone</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={instructorForm.phone}
-                  onChange={handleInstructorChange}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none transition-colors ${
-                    darkMode
-                      ? 'bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-600'
-                      : 'bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400'
-                  }`}
-                  placeholder="(xxx) xxx-xxxx"
-                />
-              </div>
-              <div>
-                <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={instructorForm.email}
-                  onChange={handleInstructorChange}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none transition-colors ${
-                    darkMode
-                      ? 'bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-600'
-                      : 'bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400'
-                  }`}
-                  placeholder="your@email.com"
-                />
-              </div>
+            <div className="terminal-body">
+              {!isInstructor ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm mb-2 text-gray-500 font-terminal">--name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={studentForm.name}
+                      onChange={handleStudentChange}
+                      required
+                      className="input-hack w-full rounded-lg"
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-2 text-gray-500 font-terminal">--student-id</label>
+                    <input
+                      type="text"
+                      name="studentId"
+                      value={studentForm.studentId}
+                      onChange={handleStudentChange}
+                      required
+                      className="input-hack w-full rounded-lg"
+                      placeholder="e.g. 12345678"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-2 text-gray-500 font-terminal">--email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={studentForm.email}
+                      onChange={handleStudentChange}
+                      required
+                      className="input-hack w-full rounded-lg"
+                      placeholder="your@email.com"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm mb-2 text-gray-500 font-terminal">--name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={instructorForm.name}
+                      onChange={handleInstructorChange}
+                      required
+                      className="input-hack w-full rounded-lg"
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-2 text-gray-500 font-terminal">--office</label>
+                    <input
+                      type="text"
+                      name="office"
+                      value={instructorForm.office}
+                      onChange={handleInstructorChange}
+                      required
+                      className="input-hack w-full rounded-lg"
+                      placeholder="Office location"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-2 text-gray-500 font-terminal">--phone</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={instructorForm.phone}
+                      onChange={handleInstructorChange}
+                      required
+                      className="input-hack w-full rounded-lg"
+                      placeholder="(xxx) xxx-xxxx"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-2 text-gray-500 font-terminal">--email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={instructorForm.email}
+                      onChange={handleInstructorChange}
+                      required
+                      className="input-hack w-full rounded-lg"
+                      placeholder="your@email.com"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Signature */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className={`text-sm ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>E-Signature</label>
+          <div className="terminal-window">
+            <div className="terminal-header">
+              <div className="terminal-dot red" />
+              <div className="terminal-dot yellow" />
+              <div className="terminal-dot green" />
+              <span className="ml-4 text-xs text-gray-500 font-terminal">signature_capture.sh</span>
               <button
                 type="button"
                 onClick={clearSignature}
-                className={`text-sm transition-colors ${darkMode ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-500 hover:text-zinc-700'}`}
+                className="ml-auto text-xs text-gray-500 hover:text-matrix transition-colors font-terminal"
               >
-                Clear
+                [CLEAR]
               </button>
             </div>
-            <div className={`border rounded-lg overflow-hidden ${darkMode ? 'border-zinc-800 bg-zinc-900' : 'border-zinc-300 bg-zinc-100'}`}>
-              <SignatureCanvas
-                ref={sigCanvas}
-                canvasProps={{
-                  className: 'w-full h-32 cursor-crosshair',
-                  style: { width: '100%', height: '128px' }
-                }}
-                backgroundColor={darkMode ? 'rgb(24, 24, 27)' : 'rgb(244, 244, 245)'}
-                penColor={darkMode ? '#00baff' : '#008bbf'}
-              />
+            <div className="p-4">
+              <div className="border border-matrix/30 rounded-lg overflow-hidden bg-terminal-bg">
+                <SignatureCanvas
+                  ref={sigCanvas}
+                  canvasProps={{
+                    className: 'w-full h-32 cursor-crosshair',
+                    style: { width: '100%', height: '128px' }
+                  }}
+                  backgroundColor="#0a0a0a"
+                  penColor="#00ff41"
+                />
+              </div>
+              <p className="text-xs mt-2 text-gray-600 font-terminal">
+                <span className="text-matrix">&gt;</span> Draw signature above to authenticate
+              </p>
             </div>
-            <p className={`text-xs mt-2 ${darkMode ? 'text-zinc-600' : 'text-zinc-500'}`}>Draw your signature above</p>
           </div>
 
           {error && (
-            <p className="text-red-400 text-sm">{error}</p>
+            <div className="text-hack-red text-sm font-terminal">{error}</div>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full md:w-auto px-8 py-3 bg-cyber-600 hover:bg-cyber-500 disabled:bg-cyber-800 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+            className="btn-hack-filled rounded-lg w-full md:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Submitting...' : 'Submit Signature'}
+            {submitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                TRANSMITTING...
+              </span>
+            ) : (
+              'SUBMIT SIGNATURE'
+            )}
           </button>
         </form>
       </div>

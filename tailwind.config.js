@@ -6,21 +6,50 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+        mono: ['Fira Code', 'Share Tech Mono', 'monospace'],
+        terminal: ['Share Tech Mono', 'monospace'],
       },
       colors: {
-        cyber: {
-          50: '#e6f7ff',
-          100: '#b3e7ff',
-          200: '#80d7ff',
-          300: '#4dc7ff',
-          400: '#00baff',
-          500: '#00a3e0',
-          600: '#008bbf',
-          700: '#006d96',
-          800: '#00506e',
-          950: '#002535',
+        matrix: {
+          DEFAULT: '#00ff41',
+          dim: '#00cc33',
+          dark: '#00991f',
+          glow: 'rgba(0, 255, 65, 0.6)',
+          bg: '#0a0a0a',
         },
+        terminal: {
+          bg: '#0a0a0a',
+          alt: '#0d1117',
+          border: '#1a1a1a',
+          header: '#2a2a2a',
+        },
+        hack: {
+          red: '#ff0040',
+          cyan: '#00ffff',
+          yellow: '#ffff00',
+          orange: '#ff9500',
+        },
+      },
+      animation: {
+        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+        'flicker': 'flicker 4s infinite',
+        'glitch': 'glitch 0.3s infinite',
+      },
+      keyframes: {
+        'pulse-glow': {
+          '0%, 100%': {
+            opacity: '1',
+            textShadow: '0 0 5px rgba(0, 255, 65, 0.6), 0 0 10px rgba(0, 255, 65, 0.4)'
+          },
+          '50%': {
+            opacity: '0.8',
+            textShadow: '0 0 20px rgba(0, 255, 65, 0.8), 0 0 30px rgba(0, 255, 65, 0.6)'
+          },
+        },
+      },
+      boxShadow: {
+        'neon': '0 0 5px rgba(0, 255, 65, 0.6), 0 0 10px rgba(0, 255, 65, 0.4), 0 0 20px rgba(0, 255, 65, 0.2)',
+        'neon-strong': '0 0 10px rgba(0, 255, 65, 0.8), 0 0 20px rgba(0, 255, 65, 0.6), 0 0 40px rgba(0, 255, 65, 0.4)',
       },
     },
   },
