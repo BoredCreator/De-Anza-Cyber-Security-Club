@@ -13,26 +13,6 @@ interface Message {
   isWebhook: boolean
 }
 
-interface VisitorData {
-  timezone: string
-  language: string
-  screen: string
-  platform: string
-  referrer: string
-  userAgent: string
-  colorDepth: number
-  deviceMemory: number | null
-  hardwareConcurrency: number
-  cookiesEnabled: boolean
-  doNotTrack: string | null
-  online: boolean
-  connectionType: string | null
-  touchSupport: boolean
-  maxTouchPoints: number
-  devicePixelRatio: number
-  pageUrl: string
-  viewportSize: string
-}
 
 // Matrix rain characters
 const matrixChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*<>[]{}=/\\|'
@@ -85,14 +65,13 @@ function App() {
   const [onlineCount, setOnlineCount] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const chatTrackedRef = useRef(false)
-  const chatOpenedAtRef = useRef<number | null>(null)
+    const chatOpenedAtRef = useRef<number | null>(null)
   const pingAudioRef = useRef<HTMLAudioElement>(null)
   const lastMessageCountRef = useRef(0)
 
   useEffect(() => {
     setLoaded(true)
-    // trackVisit('page_view')
+    trackVisit()
   }, [])
 
   useEffect(() => {
@@ -145,48 +124,9 @@ function App() {
     }
   }
 
-  const getVisitorData = (): VisitorData => {
-    const nav = navigator as Navigator & {
-      deviceMemory?: number
-      connection?: { effectiveType?: string }
-    }
-    return {
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      language: navigator.language,
-      screen: `${window.screen.width}x${window.screen.height}`,
-      platform: navigator.platform,
-      referrer: document.referrer || 'Direct',
-      userAgent: navigator.userAgent,
-      colorDepth: window.screen.colorDepth,
-      deviceMemory: nav.deviceMemory || null,
-      hardwareConcurrency: navigator.hardwareConcurrency || 0,
-      cookiesEnabled: navigator.cookieEnabled,
-      doNotTrack: navigator.doNotTrack,
-      online: navigator.onLine,
-      connectionType: nav.connection?.effectiveType || null,
-      touchSupport: 'ontouchstart' in window,
-      maxTouchPoints: navigator.maxTouchPoints || 0,
-      devicePixelRatio: window.devicePixelRatio || 1,
-      pageUrl: window.location.href,
-      viewportSize: `${window.innerWidth}x${window.innerHeight}`
-    }
-  }
-
-  const trackVisit = async (type: string) => {
+  const trackVisit = async () => {
     try {
-      if (type === 'page_view') {
-        const lastVisit = localStorage.getItem('dacc_last_visit')
-        const now = Date.now()
-        const tenMinutes = 10 * 60 * 1000
-        if (lastVisit && (now - parseInt(lastVisit)) < tenMinutes) return
-        localStorage.setItem('dacc_last_visit', now.toString())
-      }
-      const payload = { type, visitorData: getVisitorData() }
-      await fetch('/api/track-visit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
+      await fetch('/api/track-visit', { method: 'POST' })
     } catch {
       // Silently handle fetch errors
     }
@@ -208,10 +148,6 @@ function App() {
     setSending(true)
     if (!chatActive) {
       setChatActive(true)
-      if (!chatTrackedRef.current) {
-        chatTrackedRef.current = true
-        trackVisit('chat_opened')
-      }
     }
 
     const optimisticMessage: Message = {
