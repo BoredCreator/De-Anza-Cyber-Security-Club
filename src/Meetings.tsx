@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import Footer from './components/Footer'
 
-interface Meeting {
+export interface Meeting {
   id: string
   title: string
   description: string
@@ -15,7 +15,7 @@ interface Meeting {
 }
 
 // Sample meeting data - replace with Firebase data later
-const MEETINGS_DATA: Meeting[] = [
+export const MEETINGS_DATA: Meeting[] = [
   {
     id: '1',
     title: 'Introduction to Ethical Hacking',
@@ -107,8 +107,9 @@ const MEETINGS_DATA: Meeting[] = [
 ]
 
 type FilterType = 'all' | 'upcoming' | 'past'
+type TypeFilter = 'all' | Meeting['type']
 
-const TYPE_COLORS: Record<Meeting['type'], string> = {
+export const TYPE_COLORS: Record<Meeting['type'], string> = {
   workshop: 'text-hack-cyan border-hack-cyan/50',
   lecture: 'text-hack-yellow border-hack-yellow/50',
   ctf: 'text-hack-red border-hack-red/50',
@@ -116,7 +117,7 @@ const TYPE_COLORS: Record<Meeting['type'], string> = {
   general: 'text-matrix border-matrix/50'
 }
 
-const TYPE_LABELS: Record<Meeting['type'], string> = {
+export const TYPE_LABELS: Record<Meeting['type'], string> = {
   workshop: 'WORKSHOP',
   lecture: 'LECTURE',
   ctf: 'CTF',
@@ -127,6 +128,7 @@ const TYPE_LABELS: Record<Meeting['type'], string> = {
 function Meetings() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<FilterType>('all')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [loaded, setLoaded] = useState(false)
 
   useState(() => {
@@ -148,6 +150,11 @@ function Meetings() {
       meetings = meetings.filter(m => new Date(m.date) >= today)
     } else if (filter === 'past') {
       meetings = meetings.filter(m => new Date(m.date) < today)
+    }
+
+    // Apply type filter
+    if (typeFilter !== 'all') {
+      meetings = meetings.filter(m => m.type === typeFilter)
     }
 
     // Apply search filter
@@ -172,7 +179,7 @@ function Meetings() {
     })
 
     return meetings
-  }, [filter, searchQuery])
+  }, [filter, typeFilter, searchQuery])
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -226,9 +233,10 @@ function Meetings() {
 
             <div className="grid gap-4 md:grid-cols-2">
               {featuredMeetings.map((meeting) => (
-                <div
+                <Link
+                  to={`/meetings/${meeting.id}`}
                   key={meeting.id}
-                  className="relative overflow-hidden rounded-xl border-2 border-matrix bg-gradient-to-br from-matrix/10 via-terminal-bg to-matrix/5 p-6 group hover:shadow-neon transition-all duration-300"
+                  className="relative overflow-hidden rounded-xl border-2 border-matrix bg-gradient-to-br from-matrix/10 via-terminal-bg to-matrix/5 p-6 group hover:shadow-neon transition-all duration-300 cursor-pointer"
                 >
                   <div className="absolute top-3 right-3">
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-terminal bg-matrix/20 text-matrix border border-matrix/50">
@@ -286,7 +294,7 @@ function Meetings() {
                       ))}
                     </div>
                   )}
-                </div>
+                </Link>
               ))}
             </div>
           </section>
@@ -302,6 +310,7 @@ function Meetings() {
               <span className="ml-4 text-xs text-gray-500 font-terminal">search_meetings</span>
             </div>
             <div className="terminal-body">
+              <div className="flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row gap-4">
                 {/* Search Input */}
                 <div className="flex-1 relative">
@@ -319,7 +328,7 @@ function Meetings() {
                   />
                 </div>
 
-                {/* Filter Buttons */}
+                {/* Time Filter Buttons */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setFilter('all')}
@@ -353,6 +362,72 @@ function Meetings() {
                   </button>
                 </div>
               </div>
+
+              {/* Type Filter Buttons */}
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs text-gray-500 font-terminal self-center mr-2">TYPE:</span>
+                <button
+                  onClick={() => setTypeFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-terminal transition-all ${
+                    typeFilter === 'all'
+                      ? 'bg-matrix/20 text-matrix border border-matrix'
+                      : 'bg-terminal-alt text-gray-400 border border-gray-700 hover:border-matrix/50'
+                  }`}
+                >
+                  ALL TYPES
+                </button>
+                <button
+                  onClick={() => setTypeFilter('workshop')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-terminal transition-all ${
+                    typeFilter === 'workshop'
+                      ? 'bg-hack-cyan/20 text-hack-cyan border border-hack-cyan'
+                      : 'bg-terminal-alt text-gray-400 border border-gray-700 hover:border-hack-cyan/50'
+                  }`}
+                >
+                  WORKSHOP
+                </button>
+                <button
+                  onClick={() => setTypeFilter('lecture')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-terminal transition-all ${
+                    typeFilter === 'lecture'
+                      ? 'bg-hack-yellow/20 text-hack-yellow border border-hack-yellow'
+                      : 'bg-terminal-alt text-gray-400 border border-gray-700 hover:border-hack-yellow/50'
+                  }`}
+                >
+                  LECTURE
+                </button>
+                <button
+                  onClick={() => setTypeFilter('ctf')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-terminal transition-all ${
+                    typeFilter === 'ctf'
+                      ? 'bg-hack-red/20 text-hack-red border border-hack-red'
+                      : 'bg-terminal-alt text-gray-400 border border-gray-700 hover:border-hack-red/50'
+                  }`}
+                >
+                  CTF
+                </button>
+                <button
+                  onClick={() => setTypeFilter('social')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-terminal transition-all ${
+                    typeFilter === 'social'
+                      ? 'bg-purple-400/20 text-purple-400 border border-purple-400'
+                      : 'bg-terminal-alt text-gray-400 border border-gray-700 hover:border-purple-400/50'
+                  }`}
+                >
+                  SOCIAL
+                </button>
+                <button
+                  onClick={() => setTypeFilter('general')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-terminal transition-all ${
+                    typeFilter === 'general'
+                      ? 'bg-matrix/20 text-matrix border border-matrix'
+                      : 'bg-terminal-alt text-gray-400 border border-gray-700 hover:border-matrix/50'
+                  }`}
+                >
+                  GENERAL
+                </button>
+              </div>
+            </div>
             </div>
           </div>
         </section>
@@ -363,6 +438,7 @@ function Meetings() {
             <span className="text-matrix neon-text-subtle text-lg">$</span>
             <span className="text-gray-400 font-terminal">
               ls -la ./meetings/ {filter !== 'all' && `--filter=${filter}`}
+              {typeFilter !== 'all' && ` --type=${typeFilter}`}
               {searchQuery && ` | grep "${searchQuery}"`}
             </span>
           </div>
@@ -383,6 +459,7 @@ function Meetings() {
                   onClick={() => {
                     setSearchQuery('')
                     setFilter('all')
+                    setTypeFilter('all')
                   }}
                   className="text-matrix hover:neon-text-subtle transition-all text-sm"
                 >
@@ -393,9 +470,10 @@ function Meetings() {
           ) : (
             <div className="space-y-4">
               {filteredMeetings.map((meeting) => (
-                <div
+                <Link
+                  to={`/meetings/${meeting.id}`}
                   key={meeting.id}
-                  className={`card-hack p-5 rounded-lg group transition-all ${
+                  className={`card-hack p-5 rounded-lg group transition-all block ${
                     isPast(meeting.date) ? 'opacity-70' : ''
                   }`}
                 >
@@ -465,7 +543,7 @@ function Meetings() {
                       )}
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

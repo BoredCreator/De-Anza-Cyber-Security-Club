@@ -5,15 +5,6 @@ import Footer from './components/Footer'
 const prefetchPetition = () => import('./Petition')
 const prefetchMeetings = () => import('./Meetings')
 
-interface Message {
-  id: string
-  content: string
-  author: string
-  timestamp: string
-  isWebhook: boolean
-}
-
-
 // Matrix rain characters
 const matrixChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*<>[]{}=/\\|'
 
@@ -56,125 +47,18 @@ function MatrixRain() {
 
 function App() {
   const [loaded, setLoaded] = useState(false)
-  const [message, setMessage] = useState('')
-  const [messages, setMessages] = useState<Message[]>([])
-  const [sending, setSending] = useState(false)
-  const [error, setError] = useState('')
-  const [chatActive, setChatActive] = useState(false)
-  const [name, setName] = useState('')
-  const [onlineCount, setOnlineCount] = useState<number | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
-    const chatOpenedAtRef = useRef<number | null>(null)
   const pingAudioRef = useRef<HTMLAudioElement>(null)
-  const lastMessageCountRef = useRef(0)
 
   useEffect(() => {
     setLoaded(true)
     trackVisit()
   }, [])
 
-  useEffect(() => {
-    if (chatActive) {
-      if (!chatOpenedAtRef.current) {
-        chatOpenedAtRef.current = Date.now()
-      }
-      fetchOnlineCount()
-      pollingRef.current = setInterval(fetchMessages, 3000)
-    }
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current)
-    }
-  }, [chatActive])
-
-  const fetchMessages = async () => {
-    try {
-      const openedAt = chatOpenedAtRef.current
-      if (!openedAt) return
-
-      const res = await fetch(`/api/get-messages?after=${openedAt}`)
-      if (res.ok) {
-        const data: Message[] = await res.json()
-        const prevCount = lastMessageCountRef.current
-        const hasNewResponse = data.length > prevCount &&
-          data.some(msg => !msg.isWebhook &&
-            new Date(msg.timestamp).getTime() > openedAt + 1000)
-
-        if (hasNewResponse && pingAudioRef.current) {
-          pingAudioRef.current.play().catch(() => { })
-        }
-
-        lastMessageCountRef.current = data.length
-        setMessages(data)
-      }
-    } catch {
-      // Silently handle fetch errors
-    }
-  }
-
-  const fetchOnlineCount = async () => {
-    try {
-      const res = await fetch('/api/get-online-count')
-      if (res.ok) {
-        const data = await res.json()
-        setOnlineCount(data.online)
-      }
-    } catch {
-      // Silently handle fetch errors
-    }
-  }
-
   const trackVisit = async () => {
     try {
       await fetch('/api/track-visit', { method: 'POST' })
     } catch {
-      // Silently handle fetch errors
-    }
-  }
-
-  const parseContent = (content: string, isWebhook: boolean): string => {
-    if (isWebhook) return content.replace(/\*\*/g, '')
-    return content
-  }
-
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!message.trim() || sending) return
-
-    const messageText = message.trim()
-    const displayName = name.trim() || 'anonymous'
-
-    setError('')
-    setSending(true)
-    if (!chatActive) {
-      setChatActive(true)
-    }
-
-    const optimisticMessage: Message = {
-      id: `temp-${Date.now()}`,
-      content: messageText,
-      author: displayName,
-      timestamp: new Date().toISOString(),
-      isWebhook: true
-    }
-    setMessages(prev => [...prev, optimisticMessage])
-    setMessage('')
-
-    try {
-      const res = await fetch('/api/send-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: messageText, name: displayName })
-      })
-      if (!res.ok) {
-        setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id))
-        setError('[ERROR] Transmission failed')
-      }
-    } catch {
-      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id))
-      setError('[ERROR] Transmission failed')
-    } finally {
-      setSending(false)
+      console.error("Failed to track visit")
     }
   }
 
@@ -279,58 +163,6 @@ function App() {
         </a>
       </section>
 
-      {/* Modules Section */}
-      <section className={`mb-16 transition-all duration-700 delay-100 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        <div className="flex items-center gap-3 mb-6">
-          <span className="text-matrix neon-text-subtle text-lg">$</span>
-          <span className="text-gray-400 font-terminal">ls -la ./modules/</span>
-        </div>
-
-        <div className="space-y-4">
-          <div className="card-hack p-5 rounded-lg group">
-            <div className="flex items-start gap-4">
-              <div className="text-matrix text-2xl font-terminal opacity-50 group-hover:opacity-100 transition-opacity">01</div>
-              <div>
-                <h3 className="font-semibold text-matrix mb-1 group-hover:neon-text-subtle transition-all">
-                  security_foundations.sh
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Core cybersecurity concepts applicable across all programming disciplines
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="card-hack p-5 rounded-lg group">
-            <div className="flex items-start gap-4">
-              <div className="text-matrix text-2xl font-terminal opacity-50 group-hover:opacity-100 transition-opacity">02</div>
-              <div>
-                <h3 className="font-semibold text-matrix mb-1 group-hover:neon-text-subtle transition-all">
-                  security+_certification.sh
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Structured curriculum to help members achieve CompTIA Security+ certification
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="card-hack p-5 rounded-lg group">
-            <div className="flex items-start gap-4">
-              <div className="text-matrix text-2xl font-terminal opacity-50 group-hover:opacity-100 transition-opacity">03</div>
-              <div>
-                <h3 className="font-semibold text-matrix mb-1 group-hover:neon-text-subtle transition-all">
-                  hands_on_tools.sh
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Practical experience with Burp Suite, Nmap, Wireshark, and more
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Access Section */}
       <section className={`mb-16 transition-all duration-700 delay-300 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         <div className="flex items-center gap-3 mb-6">
@@ -416,7 +248,7 @@ function App() {
               <div className="card-hack p-4 rounded-lg">
                 <div className="flex items-center gap-3 mb-3">
                   <img
-                    src="/Neel A.jpg"
+                    src="/neel-anshu.jpg"
                     alt="Neel Anshu"
                     className="w-10 h-10 rounded-lg border border-matrix/40 object-cover"
                   />
@@ -474,7 +306,7 @@ function App() {
               <div className="card-hack p-4 rounded-lg">
                 <div className="flex items-center gap-3 mb-2">
                   <img
-                    src="/ricardo villasenor.png"
+                    src="/ricardo-villasenor.png"
                     alt="Ricardo Villasenor"
                     className="w-10 h-10 rounded-lg border border-matrix/40 object-cover"
                   />
@@ -539,78 +371,54 @@ function App() {
         </div>
       </section>
 
-      {/* Live Chat Section */}
-      <section className={`mb-16 transition-all duration-700 delay-400 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+      {/* Modules Section */}
+      <section className={`mb-16 transition-all duration-700 delay-100 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         <div className="flex items-center gap-3 mb-6">
           <span className="text-matrix neon-text-subtle text-lg">$</span>
-          <span className="text-gray-400 font-terminal">cat /dev/discord</span>
+          <span className="text-gray-400 font-terminal">ls -la ./modules/</span>
         </div>
 
-        <div className="terminal-window">
-          <div className="terminal-header">
-            <div className="terminal-dot red" />
-            <div className="terminal-dot yellow" />
-            <div className="terminal-dot green" />
-            <span className="ml-4 text-xs text-gray-500 font-terminal">#general</span>
-            {chatActive && onlineCount !== null && (
-              <span className="ml-auto status-online text-xs text-matrix">
-                {onlineCount} connected
-              </span>
-            )}
+        <div className="space-y-4">
+          <div className="card-hack p-5 rounded-lg group">
+            <div className="flex items-start gap-4">
+              <div className="text-matrix text-2xl font-terminal opacity-50 group-hover:opacity-100 transition-opacity">01</div>
+              <div>
+                <h3 className="font-semibold text-matrix mb-1 group-hover:neon-text-subtle transition-all">
+                  security_foundations.sh
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Core cybersecurity concepts applicable across all programming disciplines
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="terminal-body">
-            {chatActive && (
-              <div className="mb-4 max-h-48 overflow-y-auto space-y-2">
-                {messages.length === 0 ? (
-                  <p className="text-gray-600 text-sm">
-                    <span className="text-hack-yellow">[WAITING]</span> Connection established. Awaiting response...
-                  </p>
-                ) : (
-                  messages.map((msg) => (
-                    <div key={msg.id} className="text-sm">
-                      <span className="text-gray-600">[{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>{' '}
-                      <span className={msg.isWebhook ? 'text-hack-cyan' : 'text-matrix neon-text-subtle'}>{msg.author}:</span>{' '}
-                      <span className="text-gray-400">{parseContent(msg.content, msg.isWebhook)}</span>
-                    </div>
-                  ))
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
 
-            <form onSubmit={sendMessage} className="space-y-3">
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    placeholder="Enter message..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    maxLength={500}
-                    className="input-hack w-full rounded-lg pl-8"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={sending || !message.trim()}
-                  className="btn-hack rounded-lg px-6 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  {sending ? '...' : 'SEND'}
-                </button>
+          <div className="card-hack p-5 rounded-lg group">
+            <div className="flex items-start gap-4">
+              <div className="text-matrix text-2xl font-terminal opacity-50 group-hover:opacity-100 transition-opacity">02</div>
+              <div>
+                <h3 className="font-semibold text-matrix mb-1 group-hover:neon-text-subtle transition-all">
+                  security+_certification.sh
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Structured curriculum to help members achieve CompTIA Security+ certification
+                </p>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-600">--user</span>
-                <input
-                  type="text"
-                  placeholder="anonymous"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={20}
-                  className="input-hack rounded text-xs py-1 px-2 w-32"
-                />
+            </div>
+          </div>
+
+          <div className="card-hack p-5 rounded-lg group">
+            <div className="flex items-start gap-4">
+              <div className="text-matrix text-2xl font-terminal opacity-50 group-hover:opacity-100 transition-opacity">03</div>
+              <div>
+                <h3 className="font-semibold text-matrix mb-1 group-hover:neon-text-subtle transition-all">
+                  hands_on_tools.sh
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Practical experience with Burp Suite, Nmap, Wireshark, and more
+                </p>
               </div>
-            </form>
-            {error && <p className="text-hack-red text-xs mt-3">{error}</p>}
+            </div>
           </div>
         </div>
       </section>
