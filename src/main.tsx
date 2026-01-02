@@ -5,7 +5,6 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import App from '@/pages/App'
 import './index.css'
 
-const Petition = lazy(() => import('@/pages/Petition'))
 const Attendance = lazy(() => import('@/pages/Attendance'))
 const Terms = lazy(() => import('@/pages/Terms'))
 const Privacy = lazy(() => import('@/pages/Privacy'))
@@ -32,7 +31,6 @@ ReactDOM.createRoot(document.getElementById('deanzacybersecurityclub')!).render(
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
             <Route path="/" element={<App />} />
-            <Route path="/petition" element={<Petition />} />
             <Route path="/live" element={<Attendance />} />
             <Route path="/meetings" element={<Meetings />} />
             <Route path="/meetings/:id" element={<MeetingDetails />} />

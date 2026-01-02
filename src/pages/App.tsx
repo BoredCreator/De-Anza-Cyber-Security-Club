@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import Footer from '@/components/Footer'
 
-const prefetchPetition = () => import('./Petition')
 const prefetchMeetings = () => import('./Meetings')
 
 // Matrix rain characters
@@ -130,11 +129,8 @@ function App() {
           <span className="text-gray-400 font-terminal">./sign_petition.sh --urgent</span>
         </div>
 
-        <a
-          href="/petition"
+        <div
           className="group block relative overflow-hidden rounded-xl border-2 border-matrix bg-gradient-to-br from-matrix/10 via-terminal-bg to-matrix/5 p-8 transition-all duration-300 hover:shadow-neon-strong hover:scale-[1.02]"
-          onMouseEnter={prefetchPetition}
-          onFocus={prefetchPetition}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-matrix/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
           <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
@@ -146,21 +142,13 @@ function App() {
               </div>
               <div className="text-center md:text-left">
                 <h3 className="text-xl font-bold text-matrix neon-text tracking-wide mb-1">
-                  WE NEED YOUR SIGNATURE
+                  THANK YOU FOR SIGNING
                 </h3>
-                <p className="text-gray-400 text-sm md:text-base">10 seconds. Help us go official.</p>
+                <p className="text-gray-400 text-sm md:text-base">Petition is now being reviewed by ICC!</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="btn-hack-filled rounded-lg px-6 py-3 text-sm group-hover:shadow-neon-strong transition-all">
-                SIGN NOW
-              </span>
-              <svg className="w-6 h-6 text-matrix group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
           </div>
-        </a>
+        </div>
       </section>
 
       {/* Access Section */}
