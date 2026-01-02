@@ -5,6 +5,7 @@ CREATE TABLE public.users (
     display_name TEXT NOT NULL,
     student_id TEXT,
     photo_url TEXT,
+    linked_accounts JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

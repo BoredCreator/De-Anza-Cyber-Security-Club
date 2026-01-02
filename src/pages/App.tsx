@@ -411,26 +411,7 @@ function App() {
       </section>
 
       {/* Footer */}
-      <Footer className={`mt-0 transition-all duration-700 delay-500 border-matrix/20 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <p className="text-sm text-gray-600 font-terminal">
-            <span className="text-matrix neon-text-subtle">$</span> ping{' '}
-            <a
-              href="https://www.deanza.edu"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-matrix/70 hover:text-matrix hover:neon-text-subtle transition-all"
-            >
-              https://deanza.edu
-            </a>
-          </p>
-          <div className="text-xs text-gray-700 font-terminal">
-            <span className="text-matrix/50">[</span>
-            SYSTEM ACTIVE
-            <span className="text-matrix/50">]</span>
-          </div>
-        </div>
-      </Footer>
+      <Footer className={`mt-0 transition-all duration-700 delay-500 border-matrix/20 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} />
     </div>
   )
 

@@ -1,16 +1,31 @@
-import { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 interface FooterProps {
-  children?: ReactNode
   className?: string
 }
 
-function Footer({ children, className = '' }: FooterProps) {
+function Footer({ className = '' }: FooterProps) {
   return (
     <footer className={`mt-16 pt-8 border-t border-terminal-border ${className}`}>
       <div className="flex flex-col gap-4">
-        {children}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <p className="text-sm text-gray-600 font-terminal">
+            <span className="text-matrix neon-text-subtle">$</span> ping{' '}
+            <a
+              href="https://www.deanza.edu"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-matrix/70 hover:text-matrix hover:neon-text-subtle transition-all"
+            >
+              https://deanza.edu
+            </a>
+          </p>
+          <div className="text-xs text-gray-700 font-terminal">
+            <span className="text-matrix/50">[</span>
+            SYSTEM ACTIVE
+            <span className="text-matrix/50">]</span>
+          </div>
+        </div>
         <p className="text-sm text-gray-500 text-center">
           Made with ❤️ from Cupertino, CA by{' '}
           <a

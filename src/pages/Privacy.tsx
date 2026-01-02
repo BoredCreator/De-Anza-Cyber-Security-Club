@@ -23,7 +23,7 @@ function Privacy() {
           </div>
 
           <h1 className="text-3xl font-bold text-matrix neon-text mb-2">Privacy Policy</h1>
-          <p className="text-gray-500 text-sm">Last updated: December 2025</p>
+          <p className="text-gray-500 text-sm">Last updated: January 2026</p>
         </header>
 
         {/* Content */}
@@ -43,15 +43,15 @@ function Privacy() {
               <ul className="text-gray-400 space-y-2 ml-4">
                 <li className="flex items-start gap-2">
                   <span className="text-hack-cyan">-</span>
-                  <span><strong className="text-matrix">Petition Information:</strong> Name, signature, and optional comments when you sign our club petition.</span>
+                  <span><strong className="text-matrix">Account Information:</strong> When you create a member account, we collect your full name, student ID, profile picture (optional), and email address from your authentication provider.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-hack-cyan">-</span>
-                  <span><strong className="text-matrix">Chat Messages:</strong> Messages sent through our live chat feature, along with the display name you choose.</span>
+                  <span><strong className="text-matrix">Linked Social Accounts:</strong> When you sign in or link accounts via GitHub, Discord, X (Twitter), or LinkedIn, we receive and store your username, email, and profile picture from these services to facilitate authentication and display your profile.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-hack-cyan">-</span>
-                  <span><strong className="text-matrix">Analytics Data:</strong> We collect anonymized analytics data including browser type, device information, screen resolution, timezone, and general usage patterns to improve our website.</span>
+                  <span><strong className="text-matrix">Analytics Data:</strong> We collect anonymized analytics data to count the number of unique visitors to our website.</span>
                 </li>
               </ul>
             </section>
@@ -64,11 +64,19 @@ function Privacy() {
               <ul className="text-gray-400 space-y-2 ml-4">
                 <li className="flex items-start gap-2">
                   <span className="text-hack-cyan">-</span>
-                  <span>Processing petition signatures to establish DACC as an official De Anza club</span>
+                  <span>Authenticating your identity and managing your member account</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-hack-cyan">-</span>
-                  <span>Facilitating communication between potential members and club officers</span>
+                  <span>Allowing you to sign in with multiple social accounts (GitHub, Discord, X, LinkedIn)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-hack-cyan">-</span>
+                  <span>Tracking meeting attendance and member participation</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-hack-cyan">-</span>
+                  <span>Processing petition signatures to establish DACC as an official De Anza club</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-hack-cyan">-</span>
@@ -82,42 +90,70 @@ function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-matrix mb-3">3. Analytics</h2>
-              <p className="text-gray-400 leading-relaxed">
-                We collect analytics data to understand how visitors interact with our website. This includes technical information such as your browser type, operating system, screen resolution, referral source, and pages visited. This data helps us improve the website experience and is not used to personally identify individual users.
+              <h2 className="text-lg font-semibold text-matrix mb-3">3. Third-Party Authentication</h2>
+              <p className="text-gray-400 leading-relaxed mb-3">
+                We use OAuth authentication through the following providers:
+              </p>
+              <ul className="text-gray-400 space-y-2 ml-4">
+                <li className="flex items-start gap-2">
+                  <span className="text-hack-cyan">-</span>
+                  <span><strong className="text-matrix">GitHub</strong> - We receive your username, email, and avatar</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-hack-cyan">-</span>
+                  <span><strong className="text-matrix">Discord</strong> - We receive your username, email, and avatar</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-hack-cyan">-</span>
+                  <span><strong className="text-matrix">X (Twitter)</strong> - We receive your username, email, and profile picture</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-hack-cyan">-</span>
+                  <span><strong className="text-matrix">LinkedIn</strong> - We receive your name, email, and profile picture</span>
+                </li>
+              </ul>
+              <p className="text-gray-400 leading-relaxed mt-3">
+                We do not access your posts, connections, or any other data beyond what is listed above. You can unlink any connected account at any time from your settings page.
               </p>
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-matrix mb-3">4. Data Sharing</h2>
+              <h2 className="text-lg font-semibold text-matrix mb-3">4. Analytics</h2>
+              <p className="text-gray-400 leading-relaxed">
+                We collect analytics data to count the number of unique visitors to our website.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-semibold text-matrix mb-3">5. Data Sharing</h2>
               <p className="text-gray-400 leading-relaxed">
                 We do not sell, trade, or otherwise transfer your personal information to outside parties. Information may be shared with De Anza College administration solely for the purpose of club recognition and official club business.
               </p>
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-matrix mb-3">5. Data Security</h2>
+              <h2 className="text-lg font-semibold text-matrix mb-3">6. Data Security</h2>
               <p className="text-gray-400 leading-relaxed">
-                We implement reasonable security measures to protect your information. However, no method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.
+                We implement reasonable security measures to protect your information. Your data is stored securely using Supabase, with authentication handled through industry-standard OAuth protocols. However, no method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.
               </p>
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-matrix mb-3">6. Your Rights</h2>
+              <h2 className="text-lg font-semibold text-matrix mb-3">7. Your Rights</h2>
               <p className="text-gray-400 leading-relaxed">
-                You may request to view, update, or delete your personal information by contacting us through our Discord server. We will respond to such requests within a reasonable timeframe.
+                You have the right to access, update, or delete your personal information. You can manage your profile and linked accounts directly from your settings page. You may also delete your account at any time, which will permanently remove all your data from our systems. For additional requests, contact us through our Discord server.
               </p>
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-matrix mb-3">7. Changes to This Policy</h2>
+              <h2 className="text-lg font-semibold text-matrix mb-3">8. Changes to This Policy</h2>
               <p className="text-gray-400 leading-relaxed">
                 We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated revision date.
               </p>
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-matrix mb-3">8. Contact</h2>
+              <h2 className="text-lg font-semibold text-matrix mb-3">9. Contact</h2>
               <p className="text-gray-400 leading-relaxed">
                 If you have questions about this Privacy Policy, please reach out through our{' '}
                 <a
@@ -135,26 +171,7 @@ function Privacy() {
         </div>
 
         {/* Footer */}
-        <Footer className="mt-0 border-matrix/20">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <p className="text-sm text-gray-600 font-terminal">
-              <span className="text-matrix neon-text-subtle">$</span> ping{' '}
-              <a
-                href="https://www.deanza.edu"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-matrix/70 hover:text-matrix hover:neon-text-subtle transition-all"
-              >
-                https://deanza.edu
-              </a>
-            </p>
-            <div className="text-xs text-gray-700 font-terminal">
-              <span className="text-matrix/50">[</span>
-              SYSTEM ACTIVE
-              <span className="text-matrix/50">]</span>
-            </div>
-          </div>
-        </Footer>
+        <Footer className="mt-0 border-matrix/20" />
       </div>
     </div>
   )

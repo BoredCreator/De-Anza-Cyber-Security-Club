@@ -2,12 +2,22 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
+export interface LinkedAccount {
+  provider: string
+  provider_account_id: string
+  provider_email: string | null
+  provider_username: string | null
+  provider_avatar_url: string | null
+  linked_at: string
+}
+
 export interface UserProfile {
   id: string
   email: string
   display_name: string
   student_id: string | null
   photo_url: string | null
+  linked_accounts: LinkedAccount[]
   created_at: string
 }
 
@@ -19,6 +29,7 @@ interface AuthContextType {
   signInWithGitHub: () => Promise<void>
   signInWithDiscord: () => Promise<void>
   signInWithTwitter: () => Promise<void>
+  signInWithLinkedIn: () => Promise<void>
   signOut: () => Promise<void>
   updateUserProfile: (
     displayName: string,
@@ -32,6 +43,8 @@ interface AuthContextType {
     profilePicture?: File,
     avatarUrl?: string
   ) => Promise<void>
+  linkIdentity: (provider: 'github' | 'discord' | 'twitter' | 'linkedin_oidc') => Promise<void>
+  unlinkIdentity: (provider: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -52,8 +65,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           // Use setTimeout to avoid Supabase deadlock issues
-          setTimeout(() => {
-            fetchUserProfile(session.user.id)
+          setTimeout(async () => {
+            const profile = await fetchUserProfile(session.user.id)
+
+            // If we just linked an identity, sync it to the database
+            if (event === 'USER_UPDATED' && session.user.identities && profile) {
+              await syncIdentitiesToProfile(session.user.id, session.user.identities, profile)
+            }
           }, 0)
         } else {
           setUserProfile(null)
@@ -63,13 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
 
     // THEN get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log('Initial session:', session?.user?.id)
       setSession(session)
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        fetchUserProfile(session.user.id)
+        await fetchUserProfile(session.user.id)
       } else {
         setLoading(false)
       }
@@ -78,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchUserProfile = async (userId: string): Promise<void> => {
+  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
       const { data, error } = await supabase
         .from('users')
@@ -89,14 +107,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         // User might not have a profile yet (first login)
         setUserProfile(null)
-        return
+        return null
       }
-      setUserProfile(data)
+
+      // Ensure linked_accounts is always an array
+      let profile: UserProfile = {
+        ...data,
+        linked_accounts: data.linked_accounts || []
+      }
+
+      // Check if current auth identities need to be synced
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (currentUser?.identities && currentUser.identities.length > 0) {
+        const existingProviders = new Set(profile.linked_accounts.map(a => a.provider))
+        const missingIdentities = currentUser.identities.filter(i => !existingProviders.has(i.provider))
+
+        if (missingIdentities.length > 0) {
+          // Sync missing identities
+          await syncIdentitiesToProfile(userId, currentUser.identities, profile)
+          // Re-fetch to get updated data
+          const { data: updatedData } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single()
+
+          if (updatedData) {
+            profile = {
+              ...updatedData,
+              linked_accounts: updatedData.linked_accounts || []
+            }
+          }
+        }
+      }
+
+      setUserProfile(profile)
+      return profile
     } catch {
       setUserProfile(null)
+      return null
     } finally {
       setLoading(false)
     }
+  }
+
+  const syncIdentitiesToProfile = async (
+    userId: string,
+    identities: Array<{ provider: string; id: string; identity_data?: Record<string, unknown> }>,
+    currentProfile: UserProfile
+  ): Promise<void> => {
+    const newLinkedAccounts: LinkedAccount[] = identities.map(identity => {
+      const identityData = identity.identity_data || {}
+
+      // Check if this provider already exists
+      const existing = currentProfile.linked_accounts?.find(a => a.provider === identity.provider)
+
+      return {
+        provider: identity.provider,
+        provider_account_id: identity.id,
+        provider_email: (identityData.email as string) || null,
+        provider_username: (identityData.user_name as string) ||
+          (identityData.preferred_username as string) ||
+          (identityData.name as string) || null,
+        provider_avatar_url: (identityData.avatar_url as string) ||
+          (identityData.picture as string) || null,
+        linked_at: existing?.linked_at || new Date().toISOString()
+      }
+    })
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ linked_accounts: newLinkedAccounts })
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error syncing identities to profile:', error)
+      return
+    }
+
+    setUserProfile({
+      ...data,
+      linked_accounts: data.linked_accounts || []
+    })
   }
 
   const signInWithGitHub = async () => {
@@ -127,6 +221,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
     if (error) throw error
+  }
+
+  const signInWithLinkedIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'linkedin_oidc',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`
+      }
+    })
+    if (error) throw error
+  }
+
+  const linkIdentity = async (provider: 'github' | 'discord' | 'twitter' | 'linkedin_oidc') => {
+    // Store that we're linking so AuthCallback knows to redirect back to settings
+    sessionStorage.setItem('linking_provider', provider)
+
+    const { error } = await supabase.auth.linkIdentity({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/settings`
+      }
+    })
+    if (error) throw error
+  }
+
+  const unlinkIdentity = async (provider: string) => {
+    if (!user || !userProfile) throw new Error('No user logged in')
+
+    // Get fresh user data to ensure we have current identities
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    if (!currentUser) throw new Error('Failed to get current user')
+
+    // Find the identity to unlink
+    const identity = currentUser.identities?.find(i => i.provider === provider)
+    if (!identity) throw new Error('Identity not found')
+
+    // Check we have more than one identity
+    if ((currentUser.identities?.length || 0) <= 1) {
+      throw new Error('Cannot unlink the only identity')
+    }
+
+    // Unlink from Supabase Auth - pass the identity object directly
+    const { error } = await supabase.auth.unlinkIdentity(identity)
+    if (error) throw error
+
+    // Remove from linked_accounts in users table
+    const updatedLinkedAccounts = (userProfile.linked_accounts || []).filter(
+      a => a.provider !== provider
+    )
+
+    const { data, error: updateError } = await supabase
+      .from('users')
+      .update({ linked_accounts: updatedLinkedAccounts })
+      .eq('id', user.id)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
+
+    setUserProfile({
+      ...data,
+      linked_accounts: data.linked_accounts || []
+    })
   }
 
   const createProfile = async (
@@ -162,6 +319,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       photoUrl = urlData.publicUrl
     }
 
+    // Build initial linked accounts from identities
+    const initialLinkedAccounts: LinkedAccount[] = (user.identities || []).map(identity => {
+      const identityData = identity.identity_data || {}
+      return {
+        provider: identity.provider,
+        provider_account_id: identity.id,
+        provider_email: (identityData.email as string) || null,
+        provider_username: (identityData.user_name as string) ||
+          (identityData.preferred_username as string) ||
+          (identityData.name as string) || null,
+        provider_avatar_url: (identityData.avatar_url as string) ||
+          (identityData.picture as string) || null,
+        linked_at: new Date().toISOString()
+      }
+    })
+
     // Create user profile in database
     const { data, error: profileError } = await supabase
       .from('users')
@@ -170,7 +343,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email!.toLowerCase(),
         display_name: displayName,
         student_id: studentId || null,
-        photo_url: photoUrl
+        photo_url: photoUrl,
+        linked_accounts: initialLinkedAccounts
       })
       .select()
       .single()
@@ -182,7 +356,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw profileError
     }
-    setUserProfile(data)
+
+    setUserProfile({
+      ...data,
+      linked_accounts: data.linked_accounts || []
+    })
   }
 
   const signOut = async () => {
@@ -287,10 +465,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGitHub,
         signInWithDiscord,
         signInWithTwitter,
+        signInWithLinkedIn,
         signOut,
         updateUserProfile,
         deleteAccount,
-        createProfile
+        createProfile,
+        linkIdentity,
+        unlinkIdentity
       }}
     >
       {children}

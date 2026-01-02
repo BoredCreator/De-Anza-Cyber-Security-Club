@@ -506,18 +506,7 @@ function MeetingDetails() {
         )}
 
         {/* Footer */}
-        <Footer className={`transition-all duration-700 delay-300 border-matrix/20 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <p className="text-sm text-gray-600 font-terminal">
-              <span className="text-matrix neon-text-subtle">$</span> cat ./meetings/{meeting.id}.md
-            </p>
-            <div className="text-xs text-gray-700 font-terminal">
-              <span className="text-matrix/50">[</span>
-              EVENT DETAILS
-              <span className="text-matrix/50">]</span>
-            </div>
-          </div>
-        </Footer>
+        <Footer className={`transition-all duration-700 delay-300 border-matrix/20 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} />
       </div>
     </div>
   )
