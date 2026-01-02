@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import Footer from './components/Footer'
+import Footer from '@/components/Footer'
 
 const prefetchPetition = () => import('./Petition')
 const prefetchMeetings = () => import('./Meetings')

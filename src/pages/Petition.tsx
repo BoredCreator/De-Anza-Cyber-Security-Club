@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, ChangeEvent, FormEvent } from 'react'
 import SignatureCanvas from 'react-signature-canvas'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from './firebase'
-import Toggle from './components/Toggle'
-import Footer from './components/Footer'
+import { db } from '@/lib/firebase'
+import Toggle from '@/components/Toggle'
+import Footer from '@/components/Footer'
 
 interface StudentForm {
   name: string

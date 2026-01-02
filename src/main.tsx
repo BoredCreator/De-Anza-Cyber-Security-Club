@@ -1,16 +1,19 @@
 import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import App from './App'
+import { AuthProvider } from '@/contexts/AuthContext'
+import App from '@/pages/App'
 import './index.css'
 
-const Petition = lazy(() => import('./Petition'))
-const Attendance = lazy(() => import('./Attendance'))
-const Terms = lazy(() => import('./Terms'))
-const Privacy = lazy(() => import('./Privacy'))
-const Meetings = lazy(() => import('./Meetings'))
-const MeetingDetails = lazy(() => import('./MeetingDetails'))
-const NotFound = lazy(() => import('./NotFound'))
+const Petition = lazy(() => import('@/pages/Petition'))
+const Attendance = lazy(() => import('@/pages/Attendance'))
+const Terms = lazy(() => import('@/pages/Terms'))
+const Privacy = lazy(() => import('@/pages/Privacy'))
+const Meetings = lazy(() => import('@/pages/Meetings'))
+const MeetingDetails = lazy(() => import('@/pages/MeetingDetails'))
+const NotFound = lazy(() => import('@/pages/NotFound'))
+const Auth = lazy(() => import('@/pages/Auth'))
+const Dashboard = lazy(() => import('@/pages/Dashboard'))
 
 const LoadingFallback = () => (
   <div className="min-h-screen bg-terminal-bg text-matrix flex items-center justify-center">
@@ -20,21 +23,25 @@ const LoadingFallback = () => (
   </div>
 )
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById('deanzacybersecurityclub')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/petition" element={<Petition />} />
-          <Route path="/live" element={<Attendance />} />
-          <Route path="/meetings" element={<Meetings />} />
-          <Route path="/meetings/:id" element={<MeetingDetails />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/petition" element={<Petition />} />
+            <Route path="/live" element={<Attendance />} />
+            <Route path="/meetings" element={<Meetings />} />
+            <Route path="/meetings/:id" element={<MeetingDetails />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </AuthProvider>
   </React.StrictMode>,
 )

@@ -1,8 +1,8 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from './firebase'
-import Footer from './components/Footer'
+import { db } from '@/lib/firebase'
+import Footer from '@/components/Footer'
 import { MEETINGS_DATA, TYPE_COLORS, TYPE_LABELS } from './Meetings'
 
 interface AttendanceForm {

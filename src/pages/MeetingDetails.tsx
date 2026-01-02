@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import Footer from './components/Footer'
+import Footer from '@/components/Footer'
 import { MEETINGS_DATA, TYPE_COLORS, TYPE_LABELS } from './Meetings'
 
 type TabType = 'announcements' | 'photos' | 'resources'
