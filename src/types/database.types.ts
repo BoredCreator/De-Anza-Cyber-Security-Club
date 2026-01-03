@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type MeetingType = 'workshop' | 'lecture' | 'ctf' | 'social' | 'general'
+export type RegistrationType = 'open' | 'invite_only' | 'closed'
+export type RegistrationStatus = 'registered' | 'waitlist' | 'invited' | 'attended' | 'cancelled'
 
 export interface Announcement {
   id: string
@@ -80,6 +82,10 @@ export interface Database {
           photos: Photo[]
           resources: Resource[]
           secret_code: string | null
+          registration_type: RegistrationType
+          registration_capacity: number | null
+          invite_code: string | null
+          invite_form_url: string | null
           created_at: string
           updated_at: string
         }
@@ -98,6 +104,10 @@ export interface Database {
           photos?: Photo[]
           resources?: Resource[]
           secret_code?: string | null
+          registration_type?: RegistrationType
+          registration_capacity?: number | null
+          invite_code?: string | null
+          invite_form_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -116,6 +126,10 @@ export interface Database {
           photos?: Photo[]
           resources?: Resource[]
           secret_code?: string | null
+          registration_type?: RegistrationType
+          registration_capacity?: number | null
+          invite_code?: string | null
+          invite_form_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -158,6 +172,49 @@ export interface Database {
           }
         ]
       }
+      registrations: {
+        Row: {
+          id: string
+          meeting_id: string
+          user_id: string
+          status: RegistrationStatus
+          invite_code_used: string | null
+          registered_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          meeting_id: string
+          user_id: string
+          status: RegistrationStatus
+          invite_code_used?: string | null
+          registered_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          meeting_id?: string
+          user_id?: string
+          status?: RegistrationStatus
+          invite_code_used?: string | null
+          registered_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registrations_meeting_id_fkey"
+            columns: ["meeting_id"]
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registrations_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -176,3 +233,4 @@ export interface Database {
 
 export type Meeting = Database['public']['Tables']['meetings']['Row']
 export type Attendance = Database['public']['Tables']['attendance']['Row']
+export type Registration = Database['public']['Tables']['registrations']['Row']

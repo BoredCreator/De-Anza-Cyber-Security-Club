@@ -3,12 +3,30 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { TYPE_COLORS, TYPE_LABELS } from './Meetings'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Meeting, MeetingType, Announcement, Photo, Resource } from '@/types/database.types'
+import type { Meeting, MeetingType, Announcement, Photo, Resource, Registration, RegistrationType } from '@/types/database.types'
 import {
   Spinner, Close, Edit, Plus, Trash, Calendar, Clock, MapPin,
   Star, Key, Eye, EyeOff, Fullscreen, Megaphone, Photo as PhotoIcon,
-  Download, Link as LinkIcon, Slides, Play, ExternalLink
+  Download, Link as LinkIcon, Slides, Play, ExternalLink, CheckCircle, Users
 } from '@/lib/cyberIcon'
+import {
+  registerForMeeting,
+  cancelRegistration,
+  getUserRegistration,
+  getRegistrationCount,
+  getWaitlistCount
+} from '@/lib/registrations'
+
+interface UserProfile {
+  id: string
+  display_name: string
+  photo_url: string | null
+  email: string
+}
+
+interface RegistrationWithUser extends Registration {
+  user?: UserProfile
+}
 
 type TabType = 'announcements' | 'photos' | 'resources'
 
@@ -23,6 +41,10 @@ interface EditForm {
   featured: boolean
   topics: string
   secret_code: string
+  registration_type: RegistrationType
+  registration_capacity: number | null
+  invite_code: string
+  invite_form_url: string
   announcements: Announcement[]
   photos: Photo[]
   resources: Resource[]
@@ -31,7 +53,7 @@ interface EditForm {
 function MeetingDetails() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
-  const { userProfile } = useAuth()
+  const { user, userProfile } = useAuth()
   const [loaded, setLoaded] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('announcements')
   const [meeting, setMeeting] = useState<Meeting | null>(null)
@@ -46,6 +68,17 @@ function MeetingDetails() {
   const tabContainerRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
+
+  // Registration state
+  const [userRegistration, setUserRegistration] = useState<Registration | null>(null)
+  const [registrationCount, setRegistrationCount] = useState(0)
+  const [waitlistCount, setWaitlistCount] = useState(0)
+  const [registering, setRegistering] = useState(false)
+  const [inviteCode, setInviteCode] = useState('')
+  const [showInviteCodeInput, setShowInviteCodeInput] = useState(false)
+  const [registrationMessage, setRegistrationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [registeredUsers, setRegisteredUsers] = useState<RegistrationWithUser[]>([])
+  const [loadingRegistrations, setLoadingRegistrations] = useState(false)
 
   const isOfficer = userProfile?.is_officer ?? false
 
@@ -85,6 +118,30 @@ function MeetingDetails() {
 
     fetchMeeting()
   }, [slug])
+
+  // Fetch registration data
+  useEffect(() => {
+    async function fetchRegistrationData() {
+      if (!meeting || !user) return
+
+      try {
+        // Fetch user's registration status
+        const registration = await getUserRegistration(meeting.id, user.id)
+        setUserRegistration(registration)
+
+        // Fetch registration counts
+        const count = await getRegistrationCount(meeting.id)
+        setRegistrationCount(count)
+
+        const wCount = await getWaitlistCount(meeting.id)
+        setWaitlistCount(wCount)
+      } catch (err) {
+        console.error('Error fetching registration data:', err)
+      }
+    }
+
+    fetchRegistrationData()
+  }, [meeting, user])
 
   // ESC key to close fullscreen code
   useEffect(() => {
@@ -138,7 +195,64 @@ function MeetingDetails() {
     })
   }
 
-  const startEditing = () => {
+  const handleRegister = async () => {
+    if (!meeting || !user) {
+      navigate('/auth')
+      return
+    }
+
+    setRegistering(true)
+    setRegistrationMessage(null)
+
+    const result = await registerForMeeting(meeting.id, user.id, meeting, inviteCode)
+
+    if (result.success) {
+      setUserRegistration(result.registration || null)
+      setRegistrationMessage({ type: 'success', text: result.message })
+      setShowInviteCodeInput(false)
+      setInviteCode('')
+
+      // Refresh counts
+      const count = await getRegistrationCount(meeting.id)
+      setRegistrationCount(count)
+      const wCount = await getWaitlistCount(meeting.id)
+      setWaitlistCount(wCount)
+    } else {
+      setRegistrationMessage({ type: 'error', text: result.message })
+    }
+
+    setRegistering(false)
+  }
+
+  const handleCancelRegistration = async () => {
+    if (!meeting || !user) return
+
+    setRegistering(true)
+    setRegistrationMessage(null)
+
+    const result = await cancelRegistration(meeting.id, user.id)
+
+    if (result.success) {
+      setUserRegistration(null)
+      setRegistrationMessage({ type: 'success', text: result.message })
+
+      // Refresh counts
+      const count = await getRegistrationCount(meeting.id)
+      setRegistrationCount(count)
+      const wCount = await getWaitlistCount(meeting.id)
+      setWaitlistCount(wCount)
+    } else {
+      setRegistrationMessage({ type: 'error', text: result.message })
+    }
+
+    setRegistering(false)
+  }
+
+  const isAtCapacity = meeting?.registration_capacity
+    ? registrationCount >= meeting.registration_capacity
+    : false
+
+  const startEditing = async () => {
     if (!meeting) return
     setEditForm({
       slug: meeting.slug,
@@ -151,12 +265,51 @@ function MeetingDetails() {
       featured: meeting.featured,
       topics: meeting.topics?.join(', ') || '',
       secret_code: meeting.secret_code || '',
+      registration_type: meeting.registration_type || 'open',
+      registration_capacity: meeting.registration_capacity,
+      invite_code: meeting.invite_code || '',
+      invite_form_url: meeting.invite_form_url || '',
       announcements: meeting.announcements ? [...meeting.announcements] : [],
       photos: meeting.photos ? [...meeting.photos] : [],
       resources: meeting.resources ? [...meeting.resources] : []
     })
     setEditError('')
     setIsEditing(true)
+
+    // Fetch registered users for this meeting
+    if (isOfficer) {
+      setLoadingRegistrations(true)
+      try {
+        const { data: registrations } = await supabase
+          .from('registrations')
+          .select('*')
+          .eq('meeting_id', meeting.id)
+          .order('registered_at', { ascending: false })
+
+        if (registrations && registrations.length > 0) {
+          // Fetch user profiles for all registrations
+          const userIds = registrations.map(r => r.user_id)
+          const { data: profiles } = await supabase
+            .from('users')
+            .select('id, display_name, photo_url, email')
+            .in('id', userIds)
+
+          // Map users to registrations
+          const registrationsWithUsers: RegistrationWithUser[] = registrations.map(reg => ({
+            ...reg,
+            user: profiles?.find(p => p.id === reg.user_id)
+          }))
+
+          setRegisteredUsers(registrationsWithUsers)
+        } else {
+          setRegisteredUsers([])
+        }
+      } catch (err) {
+        console.error('Error fetching registrations:', err)
+      } finally {
+        setLoadingRegistrations(false)
+      }
+    }
   }
 
   const generateId = () => crypto.randomUUID()
@@ -256,7 +409,7 @@ function MeetingDetails() {
     setEditError('')
   }
 
-  const handleEditChange = (field: keyof EditForm, value: string | boolean) => {
+  const handleEditChange = (field: keyof EditForm, value: string | boolean | number | null) => {
     if (!editForm) return
     setEditForm({ ...editForm, [field]: value })
   }
@@ -298,6 +451,10 @@ function MeetingDetails() {
           featured: editForm.featured,
           topics: topicsArray,
           secret_code: editForm.secret_code || null,
+          registration_type: editForm.registration_type,
+          registration_capacity: editForm.registration_capacity,
+          invite_code: editForm.invite_code || null,
+          invite_form_url: editForm.invite_form_url || null,
           announcements: validAnnouncements,
           photos: validPhotos,
           resources: validResources,
@@ -312,6 +469,12 @@ function MeetingDetails() {
       setMeeting(data)
       setIsEditing(false)
       setEditForm(null)
+
+      // Refresh registration counts
+      const count = await getRegistrationCount(data.id)
+      setRegistrationCount(count)
+      const wCount = await getWaitlistCount(data.id)
+      setWaitlistCount(wCount)
 
       // If slug changed, navigate to new URL
       if (editForm.slug !== slug) {
@@ -594,6 +757,158 @@ function MeetingDetails() {
                         <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${editForm.featured ? 'left-7' : 'left-1'}`} />
                       </button>
                       <label className="text-sm text-gray-400">Featured meeting</label>
+                    </div>
+                  </div>
+
+                  {/* Registration Settings */}
+                  <div className="border-t border-gray-700 pt-6">
+                    <h3 className="text-lg font-semibold text-hack-purple mb-4">Registration Settings</h3>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {/* Registration Type */}
+                      <div>
+                        <label className="block text-xs text-gray-500 font-terminal mb-1">REGISTRATION TYPE</label>
+                        <select
+                          value={editForm.registration_type}
+                          onChange={(e) => handleEditChange('registration_type', e.target.value)}
+                          className="input-hack w-full rounded-lg"
+                        >
+                          <option value="open">Open (anyone can register)</option>
+                          <option value="invite_only">Invite Only</option>
+                          <option value="closed">Closed (no registration)</option>
+                        </select>
+                      </div>
+
+                      {/* Registration Capacity */}
+                      <div>
+                        <label className="block text-xs text-gray-500 font-terminal mb-1">CAPACITY (leave empty for unlimited)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editForm.registration_capacity || ''}
+                          onChange={(e) => handleEditChange('registration_capacity', e.target.value ? parseInt(e.target.value) : null)}
+                          className="input-hack w-full rounded-lg"
+                          placeholder="50"
+                        />
+                        <p className="text-xs text-gray-600 mt-1">Max number of attendees</p>
+                      </div>
+                    </div>
+
+                    {/* Invite-only fields */}
+                    {editForm.registration_type === 'invite_only' && (
+                      <div className="grid gap-4 md:grid-cols-2 mt-4">
+                        <div>
+                          <label className="block text-xs text-gray-500 font-terminal mb-1">INVITE CODE</label>
+                          <input
+                            type="text"
+                            value={editForm.invite_code}
+                            onChange={(e) => handleEditChange('invite_code', e.target.value.toUpperCase())}
+                            className="input-hack w-full rounded-lg font-mono"
+                            placeholder="INVITE123"
+                          />
+                          <p className="text-xs text-gray-600 mt-1">Code users enter to register</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs text-gray-500 font-terminal mb-1">INVITE REQUEST FORM URL</label>
+                          <input
+                            type="url"
+                            value={editForm.invite_form_url}
+                            onChange={(e) => handleEditChange('invite_form_url', e.target.value)}
+                            className="input-hack w-full rounded-lg"
+                            placeholder="https://forms.gle/..."
+                          />
+                          <p className="text-xs text-gray-600 mt-1">Optional form for users to request invites</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Registered Users List */}
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-gray-300">
+                          Registered Users ({registeredUsers.length})
+                        </h4>
+                        {loadingRegistrations && <Spinner className="animate-spin h-4 w-4 text-matrix" />}
+                      </div>
+
+                      {registeredUsers.length === 0 ? (
+                        <p className="text-gray-500 text-sm">No registrations yet</p>
+                      ) : (
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {registeredUsers.map((registration) => (
+                            <div key={registration.id} className="flex items-center gap-3 p-3 rounded-lg bg-terminal-alt border border-gray-700">
+                              {/* Profile Picture */}
+                              <div className="shrink-0">
+                                {registration.user?.photo_url ? (
+                                  <img
+                                    src={registration.user.photo_url}
+                                    alt={registration.user.display_name}
+                                    className="w-10 h-10 rounded-full object-cover border border-gray-600"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600">
+                                    <span className="text-gray-400 text-sm font-bold">
+                                      {registration.user?.display_name.charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* User Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-gray-200 truncate">
+                                  {registration.user?.display_name || 'Unknown User'}
+                                </div>
+                                <div className="text-xs text-gray-500 truncate">
+                                  {registration.user?.email}
+                                </div>
+                              </div>
+
+                              {/* Status Badge */}
+                              <div>
+                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${
+                                  registration.status === 'attended'
+                                    ? 'border-matrix text-matrix bg-matrix/10'
+                                    : registration.status === 'registered'
+                                    ? 'border-hack-cyan text-hack-cyan bg-hack-cyan/10'
+                                    : registration.status === 'invited'
+                                    ? 'border-hack-purple text-hack-purple bg-hack-purple/10'
+                                    : registration.status === 'waitlist'
+                                    ? 'border-hack-yellow text-hack-yellow bg-hack-yellow/10'
+                                    : 'border-gray-600 text-gray-500'
+                                }`}>
+                                  {registration.status.toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Stats Summary */}
+                      {registeredUsers.length > 0 && (
+                        <div className="mt-4 grid grid-cols-3 gap-3">
+                          <div className="p-2 rounded bg-terminal-alt border border-gray-700 text-center">
+                            <div className="text-lg font-bold text-matrix">
+                              {registeredUsers.filter(r => r.status === 'registered' || r.status === 'attended').length}
+                            </div>
+                            <div className="text-xs text-gray-500">Registered</div>
+                          </div>
+                          <div className="p-2 rounded bg-terminal-alt border border-gray-700 text-center">
+                            <div className="text-lg font-bold text-hack-yellow">
+                              {registeredUsers.filter(r => r.status === 'waitlist').length}
+                            </div>
+                            <div className="text-xs text-gray-500">Waitlist</div>
+                          </div>
+                          <div className="p-2 rounded bg-terminal-alt border border-gray-700 text-center">
+                            <div className="text-lg font-bold text-matrix">
+                              {registeredUsers.filter(r => r.status === 'attended').length}
+                            </div>
+                            <div className="text-xs text-gray-500">Attended</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -890,25 +1205,165 @@ function MeetingDetails() {
                     </div>
                   )}
 
-                  {/* CTA */}
+                  {/* Registration Section */}
                   {!isPast(meeting.date) && (
                     <div className="pt-6 border-t border-gray-800">
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <a
-                          href="https://discord.gg/P6JSY6DcFn"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-hack-filled px-6 py-3 text-center"
-                        >
-                          Join Our Discord for Updates
-                        </a>
-                        <Link
-                          to="/meetings"
-                          className="btn-hack px-6 py-3 text-center"
-                        >
-                          View All Meetings
-                        </Link>
-                      </div>
+                      {registrationMessage && (
+                        <div className={`p-3 rounded-lg mb-4 ${
+                          registrationMessage.type === 'success'
+                            ? 'bg-matrix/10 border border-matrix/50 text-matrix'
+                            : 'bg-hack-red/10 border border-hack-red/50 text-hack-red'
+                        }`}>
+                          {registrationMessage.text}
+                        </div>
+                      )}
+
+                      {/* Registration Stats */}
+                      {(meeting.registration_capacity || registrationCount > 0) && (
+                        <div className="flex items-center gap-4 mb-4 text-sm">
+                          <div className="flex items-center gap-2 text-gray-400">
+                            <Users className="w-4 h-4" />
+                            <span>
+                              {registrationCount} registered
+                              {meeting.registration_capacity && ` / ${meeting.registration_capacity} capacity`}
+                            </span>
+                          </div>
+                          {waitlistCount > 0 && (
+                            <div className="text-gray-500">
+                              {waitlistCount} on waitlist
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* User already registered */}
+                      {userRegistration && userRegistration.status !== 'cancelled' ? (
+                        <div className="space-y-4">
+                          <div className="p-4 rounded-lg bg-matrix/10 border border-matrix/50">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle className="w-5 h-5 text-matrix" />
+                              <span className="font-semibold text-matrix">
+                                {userRegistration.status === 'registered' && 'You are registered'}
+                                {userRegistration.status === 'waitlist' && 'You are on the waitlist'}
+                                {userRegistration.status === 'invited' && 'You are invited'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-400">
+                              {userRegistration.status === 'registered' && 'See you at the event!'}
+                              {userRegistration.status === 'waitlist' && "You'll be notified if a spot opens up."}
+                              {userRegistration.status === 'invited' && 'You have been invited to this event.'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleCancelRegistration}
+                            disabled={registering}
+                            className="text-sm text-gray-500 hover:text-hack-red transition-colors disabled:opacity-50"
+                          >
+                            {registering ? 'Cancelling...' : 'Cancel registration'}
+                          </button>
+                        </div>
+                      ) : meeting.registration_type === 'closed' ? (
+                        /* Closed registration */
+                        <div className="p-4 rounded-lg bg-gray-800/50 border border-gray-700">
+                          <p className="text-gray-400 text-center">Registration is closed for this event</p>
+                        </div>
+                      ) : meeting.registration_type === 'invite_only' && !showInviteCodeInput ? (
+                        /* Invite-only event */
+                        <div className="space-y-4">
+                          <div className="p-4 rounded-lg bg-hack-purple/10 border border-hack-purple/50">
+                            <p className="text-hack-purple text-sm mb-2">This is an invite-only event</p>
+                            <p className="text-gray-400 text-xs">
+                              {meeting.invite_form_url
+                                ? 'Request an invite or enter your invite code to register.'
+                                : 'Enter your invite code to register.'}
+                            </p>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            {meeting.invite_form_url && (
+                              <a
+                                href={meeting.invite_form_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn-hack px-6 py-3 text-center flex-1"
+                              >
+                                Request Invite
+                              </a>
+                            )}
+                            <button
+                              onClick={() => setShowInviteCodeInput(true)}
+                              className="btn-hack-filled px-6 py-3 flex-1"
+                            >
+                              I have an invite code
+                            </button>
+                          </div>
+                        </div>
+                      ) : showInviteCodeInput || meeting.registration_type === 'invite_only' ? (
+                        /* Invite code input */
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-xs text-gray-500 font-terminal mb-2">INVITE CODE</label>
+                            <input
+                              type="text"
+                              value={inviteCode}
+                              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                              onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+                              className="input-hack w-full rounded-lg font-mono"
+                              placeholder="ENTER CODE"
+                              disabled={registering}
+                            />
+                          </div>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => {
+                                setShowInviteCodeInput(false)
+                                setInviteCode('')
+                              }}
+                              disabled={registering}
+                              className="btn-hack px-6 py-3 flex-1"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleRegister}
+                              disabled={registering || !inviteCode}
+                              className="btn-hack-filled px-6 py-3 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {registering ? 'Registering...' : 'Register'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Open registration or waitlist */
+                        <div className="flex flex-col gap-4">
+                          <button
+                            onClick={handleRegister}
+                            disabled={registering}
+                            className="btn-hack-filled px-6 py-3 text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {registering
+                              ? 'Processing...'
+                              : isAtCapacity
+                              ? 'Join Waitlist'
+                              : 'Register for Event'}
+                          </button>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <a
+                              href="https://discord.gg/P6JSY6DcFn"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-hack px-6 py-2 text-center text-sm flex-1"
+                            >
+                              Join Discord
+                            </a>
+                            <Link
+                              to="/meetings"
+                              className="btn-hack px-6 py-2 text-center text-sm flex-1"
+                            >
+                              View All Events
+                            </Link>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
@@ -918,7 +1373,7 @@ function MeetingDetails() {
         </article>
 
         {/* Tabbed Content Section */}
-        {(meeting.announcements?.length || meeting.photos?.length || meeting.resources?.length) && (
+        {!isEditing && (meeting.announcements?.length > 0 || meeting.photos?.length > 0 || meeting.resources?.length > 0) && (
           <section className={`mb-12 transition-all duration-700 delay-150 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <div className="flex items-center gap-3 mb-6">
               <span className="text-matrix neon-text-subtle text-lg">$</span>

@@ -3,13 +3,19 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { TYPE_COLORS, TYPE_LABELS } from './Meetings'
-import type { Meeting } from '@/types/database.types'
+import type { Meeting, Registration } from '@/types/database.types'
 import { Spinner, Warning, CheckCircle, ChevronRight, Clock, MapPin, Calendar } from '@/lib/cyberIcon'
+import { Tabs } from '@/components/Tabs'
+
+interface MeetingWithRegistration extends Meeting {
+  userRegistration?: Registration
+}
 
 function Dashboard() {
   const [loaded, setLoaded] = useState(false)
-  const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [meetings, setMeetings] = useState<MeetingWithRegistration[]>([])
   const [attendanceCount, setAttendanceCount] = useState(0)
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming')
   const { user, userProfile, signOut, loading } = useAuth()
   const navigate = useNavigate()
 
@@ -26,7 +32,26 @@ function Dashboard() {
           .select('*')
           .order('date', { ascending: true })
 
-        if (meetingsData) setMeetings(meetingsData)
+        if (meetingsData && user) {
+          // Fetch user's registrations for all meetings
+          const { data: registrationsData } = await supabase
+            .from('registrations')
+            .select('*')
+            .eq('user_id', user.id)
+
+          // Map registrations to meetings
+          const meetingsWithRegistrations: MeetingWithRegistration[] = meetingsData.map(meeting => {
+            const registration = registrationsData?.find(r => r.meeting_id === meeting.id)
+            return {
+              ...meeting,
+              userRegistration: registration
+            }
+          })
+
+          setMeetings(meetingsWithRegistrations)
+        } else if (meetingsData) {
+          setMeetings(meetingsData)
+        }
 
         // Fetch user's attendance count
         if (user) {
@@ -73,13 +98,22 @@ function Dashboard() {
     }
   }
 
-  // Get upcoming meetings (next 3)
+  // Get upcoming meetings
   const upcomingMeetings = useMemo(() => {
     return meetings
       .filter(m => new Date(m.date) >= new Date())
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(0, 3)
   }, [meetings])
+
+  // Get past meetings
+  const pastMeetings = useMemo(() => {
+    return meetings
+      .filter(m => new Date(m.date) < new Date())
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }, [meetings])
+
+  // Get displayed meetings based on active tab
+  const displayedMeetings = activeTab === 'upcoming' ? upcomingMeetings : pastMeetings
 
   if (loading) {
     return (
@@ -201,62 +235,94 @@ function Dashboard() {
           </Link>
         </div>
 
-        {/* Upcoming Events */}
+        {/* Events */}
         <div
           className={`mb-8 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           style={{ transitionDelay: '200ms' }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-matrix">Upcoming Events</h2>
-            <Link
-              to="/meetings"
-              className="text-sm text-gray-500 hover:text-matrix font-terminal transition-colors inline-flex items-center gap-1"
-            >
-              View all
-              <ChevronRight className="w-4 h-4" />
-            </Link>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-matrix">Events</h2>
+            <Tabs
+              tabs={[
+                { id: 'upcoming', label: 'Upcoming' },
+                { id: 'past', label: 'Past' },
+              ]}
+              activeTab={activeTab}
+              onTabChange={(tab) => setActiveTab(tab as 'upcoming' | 'past')}
+            />
           </div>
 
-          {upcomingMeetings.length > 0 ? (
-            <div className="space-y-3">
-              {upcomingMeetings.map((meeting) => (
-                <Link
-                  key={meeting.id}
-                  to={`/meetings/${meeting.slug}`}
-                  className="block card-hack rounded-lg p-4 group hover:scale-[1.01] transition-transform"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="text-center shrink-0 w-14">
-                      <div className="text-2xl font-bold text-matrix">
-                        {new Date(meeting.date).getDate()}
+          {displayedMeetings.length > 0 ? (
+            <div className="space-y-0">
+              {displayedMeetings.map((meeting, index) => (
+                <div key={meeting.id} className="flex gap-4">
+                  {/* Timeline column */}
+                  <div className="flex flex-col items-center shrink-0">
+                    <div className="text-left w-24">
+                      <div className="text-sm font-terminal text-gray-400">
+                        {new Date(meeting.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
-                      <div className="text-xs text-gray-500 uppercase font-terminal">
-                        {new Date(meeting.date).toLocaleDateString('en-US', { month: 'short' })}
+                      <div className="text-xs text-gray-600 font-terminal">
+                        {new Date(meeting.date).toLocaleDateString('en-US', { weekday: 'long' })}
                       </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${TYPE_COLORS[meeting.type]}`}>
-                          {TYPE_LABELS[meeting.type]}
-                        </span>
-                      </div>
-                      <h3 className="text-matrix font-semibold truncate group-hover:neon-text-subtle transition-all">
-                        {meeting.title}
-                      </h3>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {meeting.time}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {meeting.location}
-                        </span>
-                      </div>
+                    <div className="flex flex-col items-center flex-1 mt-2">
+                      <div className="w-2 h-2 rounded-full bg-gray-600" />
+                      {index < displayedMeetings.length - 1 && (
+                        <div className="w-px h-full bg-gray-800 min-h-[60px]" />
+                      )}
                     </div>
-                    <ChevronRight className="w-5 h-5 text-matrix/30 group-hover:text-matrix group-hover:translate-x-1 transition-all shrink-0" />
                   </div>
-                </Link>
+
+                  {/* Event card */}
+                  <Link
+                    to={`/meetings/${meeting.slug}`}
+                    className="flex-1 card-hack rounded-lg p-4 group hover:scale-[1.01] transition-transform mb-4"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-gray-400 text-sm font-terminal">
+                            {meeting.time}
+                          </span>
+                        </div>
+                        <h3 className="text-matrix font-semibold text-lg mb-2 group-hover:neon-text-subtle transition-all">
+                          {meeting.title}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${TYPE_COLORS[meeting.type]}`}>
+                            {TYPE_LABELS[meeting.type]}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {meeting.location}
+                          </span>
+                          {/* Show registration status for past events */}
+                          {activeTab === 'past' && meeting.userRegistration && (
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${
+                              meeting.userRegistration.status === 'attended'
+                                ? 'border-matrix text-matrix bg-matrix/10'
+                                : meeting.userRegistration.status === 'registered'
+                                ? 'border-hack-cyan text-hack-cyan bg-hack-cyan/10'
+                                : meeting.userRegistration.status === 'invited'
+                                ? 'border-hack-purple text-hack-purple bg-hack-purple/10'
+                                : meeting.userRegistration.status === 'waitlist'
+                                ? 'border-hack-yellow text-hack-yellow bg-hack-yellow/10'
+                                : 'border-gray-600 text-gray-500'
+                            }`}>
+                              {meeting.userRegistration.status === 'attended' && 'ATTENDED'}
+                              {meeting.userRegistration.status === 'registered' && 'REGISTERED'}
+                              {meeting.userRegistration.status === 'invited' && 'INVITED'}
+                              {meeting.userRegistration.status === 'waitlist' && 'WAITLISTED'}
+                              {meeting.userRegistration.status === 'cancelled' && 'CANCELLED'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-matrix/30 group-hover:text-matrix group-hover:translate-x-1 transition-all shrink-0" />
+                    </div>
+                  </Link>
+                </div>
               ))}
             </div>
           ) : (
@@ -267,9 +333,11 @@ function Dashboard() {
                 <div className="terminal-dot green" />
               </div>
               <div className="terminal-body text-center py-8">
-                <p className="text-gray-500">No upcoming events scheduled</p>
+                <p className="text-gray-500">
+                  No {activeTab} events {activeTab === 'upcoming' ? 'scheduled' : 'found'}
+                </p>
                 <Link to="/meetings" className="text-matrix text-sm hover:underline mt-2 inline-block">
-                  View past events
+                  View all events
                 </Link>
               </div>
             </div>

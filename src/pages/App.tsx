@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Pencil, Discord, Calendar, Document, GitHub, Instagram, Globe, X, LinkedIn, Mail, Code } from '@/lib/cyberIcon'
+import { Pencil, Discord, Calendar, Document, GitHub, Instagram, Globe, X, LinkedIn, Mail, Code, Clock, MapPin, ChevronRight } from '@/lib/cyberIcon'
+import { supabase } from '@/lib/supabase'
+import { TYPE_COLORS, TYPE_LABELS } from './Meetings'
+import type { Meeting } from '@/types/database.types'
 
 const prefetchMeetings = () => import('./Meetings')
 
@@ -46,11 +49,29 @@ function MatrixRain() {
 
 function App() {
   const [loaded, setLoaded] = useState(false)
+  const [featuredMeetings, setFeaturedMeetings] = useState<Meeting[]>([])
 
   useEffect(() => {
     setLoaded(true)
     trackVisit()
+    fetchFeaturedMeetings()
   }, [])
+
+  const fetchFeaturedMeetings = async () => {
+    try {
+      const { data } = await supabase
+        .from('meetings')
+        .select('*')
+        .eq('featured', true)
+        .gte('date', new Date().toISOString().split('T')[0])
+        .order('date', { ascending: true })
+        .limit(3)
+
+      if (data) setFeaturedMeetings(data)
+    } catch (err) {
+      console.error('Error fetching featured meetings:', err)
+    }
+  }
 
   const trackVisit = async () => {
     try {
@@ -148,6 +169,81 @@ function App() {
         </div>
       </section>
 
+      {/* Featured Meetings Section */}
+      {featuredMeetings.length > 0 && (
+        <section className={`mb-16 transition-all duration-700 delay-200 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-matrix neon-text-subtle text-lg">$</span>
+            <span className="text-gray-400 font-terminal">ls ./featured-events/</span>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            {featuredMeetings.map((meeting) => (
+              <Link
+                key={meeting.id}
+                to={`/meetings/${meeting.slug}`}
+                className="block card-hack rounded-lg p-5 group hover:scale-[1.01] transition-transform"
+              >
+                <div className="flex items-start gap-4">
+                  {/* Date Box */}
+                  <div className="text-center shrink-0 w-16">
+                    <div className="text-2xl font-bold text-matrix">
+                      {new Date(meeting.date).getDate()}
+                    </div>
+                    <div className="text-xs text-gray-500 uppercase font-terminal">
+                      {new Date(meeting.date).toLocaleDateString('en-US', { month: 'short' })}
+                    </div>
+                  </div>
+
+                  {/* Meeting Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${TYPE_COLORS[meeting.type]}`}>
+                        {TYPE_LABELS[meeting.type]}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-terminal bg-matrix/20 text-matrix border border-matrix/50">
+                        FEATURED
+                      </span>
+                    </div>
+                    <h3 className="text-matrix font-semibold text-lg mb-2 group-hover:neon-text-subtle transition-all">
+                      {meeting.title}
+                    </h3>
+                    <p className="text-gray-500 text-sm mb-3 line-clamp-2">
+                      {meeting.description}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {meeting.time}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {meeting.location}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Arrow */}
+                  <ChevronRight className="w-5 h-5 text-matrix/30 group-hover:text-matrix group-hover:translate-x-1 transition-all shrink-0" />
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <Link
+            to="/meetings"
+            className="block w-full btn-hack rounded-lg p-5 text-center group hover:scale-[1.01] transition-transform"
+            onMouseEnter={prefetchMeetings}
+            onFocus={prefetchMeetings}
+          >
+            <div className="flex items-center justify-center gap-3">
+              <Calendar className="w-5 h-5" />
+              <span className="font-semibold">VIEW ALL EVENTS</span>
+            </div>
+          </Link>
+        </section>
+      )}
+
       {/* Access Section */}
       <section className={`mb-16 transition-all duration-700 delay-300 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         <div className="flex items-center gap-3 mb-6">
@@ -179,27 +275,17 @@ function App() {
             href="https://discord.gg/AmjfRrJd5j"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-hack-filled rounded-lg inline-flex items-center gap-3"
+            className="btn-hack-filled rounded-lg flex-1 flex items-center justify-center gap-3"
           >
             <Discord className="w-5 h-5" />
             JOIN DISCORD
           </a>
 
-          <Link
-            to="/meetings"
-            className="btn-hack rounded-lg inline-flex items-center gap-3"
-            onMouseEnter={prefetchMeetings}
-            onFocus={prefetchMeetings}
-          >
-            <Calendar className="w-5 h-5" />
-            EVENTS
-          </Link>
-
           <a
             href="https://docs.google.com/document/d/1-wV6SDBT-5YoyfhNu-sBbnQondH0kmZM/edit?usp=sharing&ouid=111115151815479546677&rtpof=true&sd=true"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-hack rounded-lg inline-flex items-center gap-3"
+            className="btn-hack rounded-lg flex-1 flex items-center justify-center gap-3"
           >
             <Document className="w-5 h-5" />
             CONSTITUTION
