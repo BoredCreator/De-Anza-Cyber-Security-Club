@@ -867,17 +867,16 @@ function MeetingDetails() {
 
                               {/* Status Badge */}
                               <div>
-                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${
-                                  registration.status === 'attended'
-                                    ? 'border-matrix text-matrix bg-matrix/10'
-                                    : registration.status === 'registered'
+                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${registration.status === 'attended'
+                                  ? 'border-matrix text-matrix bg-matrix/10'
+                                  : registration.status === 'registered'
                                     ? 'border-hack-cyan text-hack-cyan bg-hack-cyan/10'
                                     : registration.status === 'invited'
-                                    ? 'border-hack-purple text-hack-purple bg-hack-purple/10'
-                                    : registration.status === 'waitlist'
-                                    ? 'border-hack-yellow text-hack-yellow bg-hack-yellow/10'
-                                    : 'border-gray-600 text-gray-500'
-                                }`}>
+                                      ? 'border-hack-purple text-hack-purple bg-hack-purple/10'
+                                      : registration.status === 'waitlist'
+                                        ? 'border-hack-yellow text-hack-yellow bg-hack-yellow/10'
+                                        : 'border-gray-600 text-gray-500'
+                                  }`}>
                                   {registration.status.toUpperCase()}
                                 </span>
                               </div>
@@ -1205,15 +1204,45 @@ function MeetingDetails() {
                     </div>
                   )}
 
+                  {/* Past Event - Show Registration Status */}
+                  {isPast(meeting.date) && userRegistration && userRegistration.status !== 'cancelled' && (
+                    <div className="pt-6 border-t border-gray-800">
+                      {userRegistration.status === 'attended' ? (
+                        <div className="p-6 rounded-lg bg-matrix/10 border border-matrix/50 text-center">
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-matrix/20 border border-matrix/50 flex items-center justify-center">
+                            <CheckCircle className="w-8 h-8 text-matrix" />
+                          </div>
+                          <h3 className="text-xl font-bold text-matrix mb-2">Thank you for joining</h3>
+                          <p className="text-gray-400 text-sm">
+                            We hope you enjoyed the event! Check out the photos and resources below.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-6 rounded-lg bg-gray-800/50 border border-gray-700 text-center">
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-700/50 border border-gray-600 flex items-center justify-center">
+                            <CheckCircle className="w-8 h-8 text-gray-400" />
+                          </div>
+                          <h3 className="text-xl font-bold text-gray-300 mb-2">
+                            {userRegistration.status === 'registered' && 'Thank you for joining'}
+                            {userRegistration.status === 'invited' && 'You were invited to this event'}
+                            {userRegistration.status === 'waitlist' && 'You were on the waitlist'}
+                          </h3>
+                          <p className="text-gray-500 text-sm">
+                            We hope you enjoyed the event! Check out the photos and resources below.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Registration Section */}
                   {!isPast(meeting.date) && (
                     <div className="pt-6 border-t border-gray-800">
                       {registrationMessage && (
-                        <div className={`p-3 rounded-lg mb-4 ${
-                          registrationMessage.type === 'success'
-                            ? 'bg-matrix/10 border border-matrix/50 text-matrix'
-                            : 'bg-hack-red/10 border border-hack-red/50 text-hack-red'
-                        }`}>
+                        <div className={`p-3 rounded-lg mb-4 ${registrationMessage.type === 'success'
+                          ? 'bg-matrix/10 border border-matrix/50 text-matrix'
+                          : 'bg-hack-red/10 border border-hack-red/50 text-hack-red'
+                          }`}>
                           {registrationMessage.text}
                         </div>
                       )}
@@ -1343,8 +1372,8 @@ function MeetingDetails() {
                             {registering
                               ? 'Processing...'
                               : isAtCapacity
-                              ? 'Join Waitlist'
-                              : 'Register for Event'}
+                                ? 'Join Waitlist'
+                                : 'Register for Event'}
                           </button>
                           <div className="flex flex-col sm:flex-row gap-3">
                             <a

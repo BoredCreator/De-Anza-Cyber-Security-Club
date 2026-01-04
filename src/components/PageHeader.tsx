@@ -1,26 +1,43 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import ProfileMenu from './ProfileMenu'
-import { ChevronLeft } from '@/lib/cyberIcon'
 
-interface PageHeaderProps {
-  backTo?: string
-  backText?: string
-}
+function PageHeader() {
+  const location = useLocation()
+  const isEventsActive = location.pathname.startsWith('/meetings')
+  const isCheckInActive = location.pathname === '/live'
 
-function PageHeader({ backTo, backText }: PageHeaderProps) {
   return (
     <div className="flex items-center justify-between mb-8">
-      {backTo && backText ? (
+      <Link
+        to="/"
+        className="glitch text-matrix hover:text-matrix transition-colors font-terminal text-sm tracking-tight neon-text-subtle"
+        data-text="[dacc]"
+      >
+        [dacc]
+      </Link>
+
+      <div className="flex items-center gap-6">
         <Link
-          to={backTo}
-          className="inline-flex items-center gap-2 text-gray-500 hover:text-matrix transition-colors group"
+          to="/meetings"
+          className={`${
+            isEventsActive
+              ? 'text-matrix neon-text-subtle'
+              : 'text-gray-500 hover:text-matrix'
+          } transition-colors font-terminal text-sm`}
         >
-          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-terminal text-sm">{backText}</span>
+          events
         </Link>
-      ) : (
-        <div />
-      )}
+        <Link
+          to="/live"
+          className={`${
+            isCheckInActive
+              ? 'text-matrix neon-text-subtle'
+              : 'text-gray-500 hover:text-matrix'
+          } transition-colors font-terminal text-sm`}
+        >
+          check-in
+        </Link>
+      </div>
 
       <ProfileMenu />
     </div>

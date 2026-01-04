@@ -105,15 +105,47 @@ function Dashboard() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   }, [meetings])
 
-  // Get past meetings
+  // Get past meetings (show events user was registered for or attended)
   const pastMeetings = useMemo(() => {
     return meetings
-      .filter(m => new Date(m.date) < new Date())
+      .filter(m => {
+        const isPast = new Date(m.date) < new Date()
+        const hasRegistration = m.userRegistration && m.userRegistration.status !== 'cancelled'
+        return isPast && hasRegistration
+      })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   }, [meetings])
 
   // Get displayed meetings based on active tab
   const displayedMeetings = activeTab === 'upcoming' ? upcomingMeetings : pastMeetings
+
+  // Get status badge info
+  const getStatusBadge = (registration?: Registration, isPastEvent = false) => {
+    if (!registration || registration.status === 'cancelled') {
+      return null
+    }
+
+    // For past events, show different labels
+    if (isPastEvent) {
+      const pastStatusConfig = {
+        attended: { label: 'Attended', color: 'bg-matrix text-black' },
+        registered: { label: 'Registered', color: 'bg-gray-600 text-white' },
+        waitlist: { label: 'Waitlisted', color: 'bg-hack-yellow text-black' },
+        invited: { label: 'Invited', color: 'bg-hack-orange text-white' },
+      }
+      return pastStatusConfig[registration.status] || null
+    }
+
+    // For upcoming events
+    const statusConfig = {
+      registered: { label: 'Going', color: 'bg-green-600 text-white' },
+      waitlist: { label: 'Waitlist', color: 'bg-hack-yellow text-black' },
+      invited: { label: 'Pending', color: 'bg-hack-orange text-white' },
+      attended: { label: 'Going', color: 'bg-green-600 text-white' },
+    }
+
+    return statusConfig[registration.status] || null
+  }
 
   if (loading) {
     return (
@@ -241,7 +273,7 @@ function Dashboard() {
           style={{ transitionDelay: '200ms' }}
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-matrix">Events</h2>
+            <h2 className="text-2xl font-bold text-matrix">My Events</h2>
             <Tabs
               tabs={[
                 { id: 'upcoming', label: 'Upcoming' },
@@ -269,7 +301,7 @@ function Dashboard() {
                     <div className="flex flex-col items-center flex-1 mt-2">
                       <div className="w-2 h-2 rounded-full bg-gray-600" />
                       {index < displayedMeetings.length - 1 && (
-                        <div className="w-px h-full bg-gray-800 min-h-[60px]" />
+                        <div className="h-full min-h-[60px] border-l-2 border-dotted border-gray-700" />
                       )}
                     </div>
                   </div>
@@ -277,49 +309,37 @@ function Dashboard() {
                   {/* Event card */}
                   <Link
                     to={`/meetings/${meeting.slug}`}
-                    className="flex-1 card-hack rounded-lg p-4 group hover:scale-[1.01] transition-transform mb-4"
+                    className="flex-1 card-hack rounded-lg p-5 group hover:scale-[1.01] transition-transform mb-4"
                   >
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-gray-400 text-sm font-terminal">
                             {meeting.time}
                           </span>
                         </div>
-                        <h3 className="text-matrix font-semibold text-lg mb-2 group-hover:neon-text-subtle transition-all">
+                        <h3 className="text-matrix font-semibold text-lg mb-3 group-hover:neon-text-subtle transition-all">
                           {meeting.title}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                        <div className="flex flex-wrap items-center gap-3 mb-3">
                           <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${TYPE_COLORS[meeting.type]}`}>
                             {TYPE_LABELS[meeting.type]}
                           </span>
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
                             <MapPin className="w-3 h-3" />
                             {meeting.location}
                           </span>
-                          {/* Show registration status for past events */}
-                          {activeTab === 'past' && meeting.userRegistration && (
-                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${
-                              meeting.userRegistration.status === 'attended'
-                                ? 'border-matrix text-matrix bg-matrix/10'
-                                : meeting.userRegistration.status === 'registered'
-                                ? 'border-hack-cyan text-hack-cyan bg-hack-cyan/10'
-                                : meeting.userRegistration.status === 'invited'
-                                ? 'border-hack-purple text-hack-purple bg-hack-purple/10'
-                                : meeting.userRegistration.status === 'waitlist'
-                                ? 'border-hack-yellow text-hack-yellow bg-hack-yellow/10'
-                                : 'border-gray-600 text-gray-500'
-                            }`}>
-                              {meeting.userRegistration.status === 'attended' && 'ATTENDED'}
-                              {meeting.userRegistration.status === 'registered' && 'REGISTERED'}
-                              {meeting.userRegistration.status === 'invited' && 'INVITED'}
-                              {meeting.userRegistration.status === 'waitlist' && 'WAITLISTED'}
-                              {meeting.userRegistration.status === 'cancelled' && 'CANCELLED'}
-                            </span>
-                          )}
                         </div>
+
+                        {/* Status Badge - Show for both upcoming and past events with registration */}
+                        {meeting.userRegistration && getStatusBadge(meeting.userRegistration, activeTab === 'past') && (
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(meeting.userRegistration, activeTab === 'past')!.color}`}>
+                              {getStatusBadge(meeting.userRegistration, activeTab === 'past')!.label}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <ChevronRight className="w-5 h-5 text-matrix/30 group-hover:text-matrix group-hover:translate-x-1 transition-all shrink-0" />
                     </div>
                   </Link>
                 </div>
@@ -332,22 +352,73 @@ function Dashboard() {
                 <div className="terminal-dot yellow" />
                 <div className="terminal-dot green" />
               </div>
-              <div className="terminal-body text-center py-8">
-                <p className="text-gray-500">
-                  No {activeTab} events {activeTab === 'upcoming' ? 'scheduled' : 'found'}
-                </p>
-                <Link to="/meetings" className="text-matrix text-sm hover:underline mt-2 inline-block">
-                  View all events
-                </Link>
+              <div className="terminal-body text-center py-16">
+                <div className="max-w-md mx-auto">
+                  {/* Icon */}
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-lg bg-gray-800/50 border border-gray-700 flex items-center justify-center">
+                    <Calendar className="w-10 h-10 text-gray-600" />
+                  </div>
+
+                  {/* Message */}
+                  <h3 className="text-xl font-bold text-gray-300 mb-3">
+                    {activeTab === 'upcoming'
+                      ? 'No upcoming events yet'
+                      : 'No past events'}
+                  </h3>
+                  <p className="text-gray-500 text-sm mb-8">
+                    {activeTab === 'upcoming'
+                      ? 'Check out our meetings page to discover and register for upcoming events and workshops.'
+                      : 'Events you attend will appear here. Register for upcoming events to start building your event history.'}
+                  </p>
+
+                  {/* CTA Button */}
+                  <Link
+                    to="/meetings"
+                    className="btn-hack-filled px-8 py-3 rounded-lg inline-flex items-center gap-2"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    {activeTab === 'upcoming' ? 'Browse All Events' : 'Explore Events'}
+                  </Link>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Browse All Events CTA */}
+        {/* My Stats */}
         <div
           className={`mb-8 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           style={{ transitionDelay: '300ms' }}
+        >
+          <h2 className="text-2xl font-bold text-matrix mb-6">My Stats</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="card-hack rounded-lg p-5">
+              <div className="text-3xl font-bold text-matrix mb-2">{attendanceCount}</div>
+              <div className="text-xs text-gray-500 font-terminal uppercase">Events Attended</div>
+            </div>
+            <div className="card-hack rounded-lg p-5">
+              <div className="text-3xl font-bold text-matrix mb-2">
+                {meetings.filter(m => m.userRegistration && m.userRegistration.status !== 'cancelled').length}
+              </div>
+              <div className="text-xs text-gray-500 font-terminal uppercase">Total Registered</div>
+            </div>
+            <div className="card-hack rounded-lg p-5">
+              <div className="text-3xl font-bold text-matrix mb-2">{upcomingMeetings.filter(m => m.userRegistration).length}</div>
+              <div className="text-xs text-gray-500 font-terminal uppercase">Upcoming RSVPs</div>
+            </div>
+            <div className="card-hack rounded-lg p-5">
+              <div className={`text-3xl font-bold mb-2 ${userProfile.student_id ? 'text-matrix' : 'text-hack-yellow'}`}>
+                {userProfile.student_id ? 'Verified' : 'Pending'}
+              </div>
+              <div className="text-xs text-gray-500 font-terminal uppercase">Student Status</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Browse All Events CTA */}
+        <div
+          className={`mb-8 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={{ transitionDelay: '400ms' }}
         >
           <Link
             to="/meetings"
@@ -364,7 +435,7 @@ function Dashboard() {
         {/* Quick Stats */}
         <div
           className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-          style={{ transitionDelay: '400ms' }}
+          style={{ transitionDelay: '500ms' }}
         >
           <div className="card-hack rounded-lg p-4 text-center">
             <div className="text-2xl font-bold text-matrix">{meetings.length}</div>

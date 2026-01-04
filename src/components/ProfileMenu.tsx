@@ -8,26 +8,54 @@ function ProfileMenu() {
   const navigate = useNavigate()
   const { userProfile, signOut, loading } = useAuth()
   const [showMenu, setShowMenu] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const ignoreNextOutsideClick = useRef(false)
+
+  const closeMenu = () => {
+    setIsClosing(true)
+    setTimeout(() => {
+      setShowMenu(false)
+      setIsClosing(false)
+    }, 200) // Match animation duration
+  }
+
+  const toggleMenu = () => {
+    if (!showMenu) {
+      setShowMenu(true)
+      // Ignore the next outside click (which is the current click event bubbling)
+      ignoreNextOutsideClick.current = true
+      setTimeout(() => {
+        ignoreNextOutsideClick.current = false
+      }, 0)
+    } else {
+      closeMenu()
+    }
+  }
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      if (ignoreNextOutsideClick.current) {
+        return
+      }
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false)
+        if (showMenu && !isClosing) {
+          closeMenu()
+        }
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [showMenu, isClosing])
 
   const handleSignOut = async () => {
     setLoggingOut(true)
     await signOut()
     setLoggingOut(false)
     setShowLogoutConfirm(false)
-    setShowMenu(false)
+    closeMenu()
     navigate('/')
   }
 
@@ -43,7 +71,7 @@ function ProfileMenu() {
     return (
       <div className="relative" ref={menuRef}>
         <button
-          onClick={() => setShowMenu(!showMenu)}
+          onClick={toggleMenu}
           className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-600 hover:border-matrix transition-colors focus:outline-none focus:ring-2 focus:ring-matrix/50"
         >
           <div className="w-full h-full bg-terminal-alt flex items-center justify-center">
@@ -52,10 +80,12 @@ function ProfileMenu() {
         </button>
 
         {showMenu && (
-          <div className="absolute right-0 mt-2 w-48 py-2 bg-terminal-alt border border-gray-700 rounded-lg shadow-lg z-50">
+          <div className={`absolute right-0 mt-2 w-48 py-2 bg-terminal-alt border border-gray-700 rounded-lg shadow-lg z-50 origin-top-right transition-all duration-200 ease-out ${
+            isClosing ? 'animate-[slideUp_0.2s_ease-out]' : 'animate-[slideDown_0.2s_ease-out]'
+          }`}>
             <Link
               to="/auth"
-              onClick={() => setShowMenu(false)}
+              onClick={closeMenu}
               className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-matrix/10 hover:text-matrix transition-colors"
             >
               <Login className="w-4 h-4" />
@@ -71,7 +101,7 @@ function ProfileMenu() {
   return (
     <div className="relative" ref={menuRef}>
       <button
-        onClick={() => setShowMenu(!showMenu)}
+        onClick={toggleMenu}
         className="w-10 h-10 rounded-full overflow-hidden border-2 border-matrix/50 hover:border-matrix transition-colors focus:outline-none focus:ring-2 focus:ring-matrix/50"
       >
         {userProfile.photo_url ? (
@@ -88,14 +118,16 @@ function ProfileMenu() {
       </button>
 
       {showMenu && (
-        <div className="absolute right-0 mt-2 w-48 py-2 bg-terminal-alt border border-gray-700 rounded-lg shadow-lg z-50">
+        <div className={`absolute right-0 mt-2 w-48 py-2 bg-terminal-alt border border-gray-700 rounded-lg shadow-lg z-50 origin-top-right transition-all duration-200 ease-out ${
+          isClosing ? 'animate-[slideUp_0.2s_ease-out]' : 'animate-[slideDown_0.2s_ease-out]'
+        }`}>
           <div className="px-4 py-2 border-b border-gray-700">
             <p className="text-sm font-semibold text-matrix truncate">{userProfile.display_name}</p>
             <p className="text-xs text-gray-500 truncate">{userProfile.email}</p>
           </div>
           <Link
             to="/dashboard"
-            onClick={() => setShowMenu(false)}
+            onClick={closeMenu}
             className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-matrix/10 hover:text-matrix transition-colors"
           >
             <Home className="w-4 h-4" />
@@ -103,7 +135,7 @@ function ProfileMenu() {
           </Link>
           <Link
             to="/settings"
-            onClick={() => setShowMenu(false)}
+            onClick={closeMenu}
             className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-matrix/10 hover:text-matrix transition-colors"
           >
             <Settings className="w-4 h-4" />
@@ -112,7 +144,7 @@ function ProfileMenu() {
           <div className="border-t border-gray-700 my-1" />
           <button
             onClick={() => {
-              setShowMenu(false)
+              closeMenu()
               setShowLogoutConfirm(true)
             }}
             className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-300 hover:bg-hack-red/10 hover:text-hack-red transition-colors"
