@@ -38,7 +38,7 @@ function PageHeader() {
         >
           study
         </Link>
-        <Link
+        {/* <Link
           to="/ctf"
           className={`${location.pathname === '/ctf'
             ? 'text-matrix neon-text-subtle'
@@ -46,7 +46,7 @@ function PageHeader() {
             } transition-colors font-terminal text-sm`}
         >
           ctf
-        </Link>
+        </Link> */}
         <Link
           to="/live"
           className={`${isCheckInActive

@@ -433,27 +433,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteAccount = async () => {
     if (!user) throw new Error('No user logged in')
 
-    // Delete profile picture from storage
-    try {
-      const { data: files } = await supabase.storage
-        .from('profile-pictures')
-        .list(user.id)
+    // Get the current session for authorization
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error('No active session')
 
-      if (files && files.length > 0) {
-        const filesToRemove = files.map(f => `${user.id}/${f.name}`)
-        await supabase.storage
-          .from('profile-pictures')
-          .remove(filesToRemove)
+    // Call the edge function to securely delete the account
+    // This uses the Admin API to properly delete the auth user
+    const { data, error } = await supabase.functions.invoke('delete-account', {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
       }
-    } catch {
-      // Ignore storage errors
+    })
+
+    if (error) {
+      console.error('Delete account error:', error)
+      throw new Error(error.message || 'Failed to delete account')
     }
 
-    // Delete user profile from database (will cascade due to FK)
-    await supabase.from('users').delete().eq('id', user.id)
+    if (data?.error) {
+      throw new Error(data.error)
+    }
 
-    // Sign out the user
-    await signOut()
+    // Clear local state and sign out
+    // Session is already invalid after deletion, so sign out may fail
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      // Ignore sign out errors - user is already deleted
+    }
+
+    // Ensure local state is cleared
+    setUserProfile(null)
   }
 
   return (

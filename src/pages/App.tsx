@@ -53,7 +53,6 @@ function App() {
 
   useEffect(() => {
     setLoaded(true)
-    trackVisit()
     fetchRecentMeetings()
   }, [])
 
@@ -68,14 +67,6 @@ function App() {
       if (data) setRecentMeetings(data)
     } catch (err) {
       console.error('Error fetching recent meetings:', err)
-    }
-  }
-
-  const trackVisit = async () => {
-    try {
-      await fetch('/api/track-visit', { method: 'POST' })
-    } catch {
-      console.error("Failed to track visit")
     }
   }
 

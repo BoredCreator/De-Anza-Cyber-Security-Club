@@ -37,10 +37,6 @@ function Privacy() {
                   <span className="text-hack-cyan">-</span>
                   <span><strong className="text-matrix">Linked Social Accounts:</strong> When you sign in or link accounts via GitHub, Discord, or LinkedIn, we receive and store your username, email, and profile picture from these services to facilitate authentication and display your profile.</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-hack-cyan">-</span>
-                  <span><strong className="text-matrix">Analytics Data:</strong> We collect anonymized analytics data to count the number of unique visitors to our website.</span>
-                </li>
               </ul>
             </section>
 
@@ -61,10 +57,6 @@ function Privacy() {
                 <li className="flex items-start gap-2">
                   <span className="text-hack-cyan">-</span>
                   <span>Tracking meeting attendance and member participation</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-hack-cyan">-</span>
-                  <span>Analyzing website usage to improve user experience</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-hack-cyan">-</span>
@@ -100,7 +92,7 @@ function Privacy() {
             <section>
               <h2 className="text-lg font-semibold text-matrix mb-3">4. Analytics</h2>
               <p className="text-gray-400 leading-relaxed">
-                We collect analytics data to count the number of unique visitors to our website.
+                No analytics are collected.
               </p>
             </section>
 
