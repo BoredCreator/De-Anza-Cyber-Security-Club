@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Pencil, Discord, Calendar, Document, GitHub, Instagram, Globe, LinkedIn, Mail, Code, Clock, MapPin, ChevronRight, X } from '@/lib/cyberIcon'
+import { Pencil, Discord, Calendar, Document, GitHub, Instagram, Globe, LinkedIn, Mail, Code, Clock, MapPin, ChevronRight, ChevronDown, X, Trophy } from '@/lib/cyberIcon'
 import { supabase } from '@/lib/supabase'
 import { TYPE_COLORS, TYPE_LABELS } from './Meetings'
 import type { Meeting } from '@/types/database.types'
@@ -206,6 +206,69 @@ function SwipeableCards({ meetings }: SwipeableCardsProps) {
         Swipe or drag to browse events
       </p>
     </div>
+  )
+}
+
+const faqs = [
+  {
+    question: 'Do I need prior experience?',
+    answer: 'Not at all! We welcome complete beginners. Our workshops start from the basics and build up. All you need is curiosity and willingness to learn.',
+  },
+  {
+    question: 'When and where do you meet?',
+    answer: 'We meet weekly during the academic quarter at De Anza College. Check our Events page for the current schedule and room locations.',
+  },
+  {
+    question: 'What will I learn?',
+    answer: 'Everything from networking fundamentals and Linux basics to penetration testing, CTF competitions, and industry certifications like Security+ and Network+.',
+  },
+  {
+    question: 'How do I join?',
+    answer: 'Just show up to a meeting! No registration required. Join our Discord to stay updated on events and connect with other members.',
+  },
+  {
+    question: 'Is this club only for CS majors?',
+    answer: 'Absolutely not! Cybersecurity is for everyone. We have members from all majors—what matters is your interest in learning.',
+  },
+]
+
+function FAQSection({ loaded }: { loaded: boolean }) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
+
+  return (
+    <section className={`mt-16 transition-all duration-700 delay-300 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-matrix neon-text-subtle text-lg">$</span>
+        <span className="text-gray-400 font-terminal">cat /etc/faq.md</span>
+      </div>
+
+      <div className="space-y-3">
+        {faqs.map((faq, index) => (
+          <div key={index} className="card-hack rounded-lg overflow-hidden">
+            <button
+              onClick={() => setOpenIndex(openIndex === index ? null : index)}
+              className="w-full p-5 text-left flex items-center justify-between hover:bg-matrix/5 transition-colors"
+            >
+              <span className="text-matrix font-semibold pr-4">{faq.question}</span>
+              <ChevronDown
+                className={`w-5 h-5 text-matrix shrink-0 transition-transform duration-200 ${
+                  openIndex === index ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+            <div
+              className={`overflow-hidden transition-all duration-200 ${
+                openIndex === index ? 'max-h-40' : 'max-h-0'
+              }`}
+            >
+              <div className="px-5 pb-5">
+                <p className="text-gray-400 leading-relaxed text-sm">{faq.answer}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -505,6 +568,62 @@ function App() {
             </div>
           </div>
         </section>
+
+        {/* CTF Hackathon Teaser */}
+        <section className={`mt-16 transition-all duration-700 delay-200 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <Link to="/ctf" className="block group">
+            <div className="relative overflow-hidden rounded-xl border border-matrix/30 bg-gradient-to-br from-terminal-bg via-matrix/5 to-terminal-bg p-8 hover:border-matrix/60 transition-all">
+              {/* Animated background effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-matrix/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+
+              <div className="relative flex flex-col md:flex-row items-center gap-6">
+                <div className="shrink-0">
+                  <div className="w-20 h-20 rounded-xl bg-matrix/20 border border-matrix/40 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Trophy className="w-10 h-10 text-matrix" />
+                  </div>
+                </div>
+
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+                    <span className="px-2 py-0.5 rounded text-xs font-terminal bg-matrix/20 border border-matrix/40 text-matrix animate-pulse">
+                      COMING SOON
+                    </span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-2 group-hover:text-matrix transition-colors">
+                    DACC Capture The Flag
+                  </h3>
+                  <p className="text-gray-400 mb-4">
+                    A full-day cybersecurity competition with $500+ in prizes, 30+ challenges, and hackers of all skill levels welcome.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4 text-matrix" />
+                      TBA 2025
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4 text-matrix" />
+                      De Anza College
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4 text-matrix" />
+                      6 Hours
+                    </span>
+                  </div>
+                </div>
+
+                <div className="shrink-0">
+                  <div className="flex items-center gap-2 text-matrix group-hover:translate-x-1 transition-transform">
+                    <span className="font-terminal text-sm">Learn More</span>
+                    <ChevronRight className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </section>
+
+        {/* FAQ Section */}
+        <FAQSection loaded={loaded} />
       </div>
     </div>
   )
