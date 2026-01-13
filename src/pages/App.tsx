@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Pencil, Discord, Calendar, Document, GitHub, Instagram, Globe, LinkedIn, Mail, Code, Clock, MapPin, ChevronRight, X } from '@/lib/cyberIcon'
 import { supabase } from '@/lib/supabase'
@@ -9,6 +9,205 @@ const prefetchMeetings = () => import('./Meetings')
 
 // Matrix rain characters
 const matrixChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*<>[]{}=/\\|'
+
+interface SwipeableCardsProps {
+  meetings: Meeting[]
+}
+
+function SwipeableCards({ meetings }: SwipeableCardsProps) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const startX = useRef(0)
+  const startY = useRef(0)
+
+  const SWIPE_THRESHOLD = 80
+
+  const handleDragStart = useCallback((clientX: number, clientY: number) => {
+    setIsDragging(true)
+    startX.current = clientX
+    startY.current = clientY
+  }, [])
+
+  const handleDragMove = useCallback((clientX: number) => {
+    if (!isDragging) return
+    const diff = clientX - startX.current
+    setDragOffset(diff)
+  }, [isDragging])
+
+  const handleDragEnd = useCallback(() => {
+    if (!isDragging) return
+    setIsDragging(false)
+
+    if (Math.abs(dragOffset) > SWIPE_THRESHOLD) {
+      const direction = dragOffset > 0 ? 'right' : 'left'
+      // Instantly switch to next card
+      if (direction === 'left' && currentIndex < meetings.length - 1) {
+        setCurrentIndex(prev => prev + 1)
+      } else if (direction === 'right' && currentIndex > 0) {
+        setCurrentIndex(prev => prev - 1)
+      }
+    }
+    setDragOffset(0)
+  }, [isDragging, dragOffset, currentIndex, meetings.length])
+
+  // Mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    handleDragStart(e.clientX, e.clientY)
+  }
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    handleDragMove(e.clientX)
+  }, [handleDragMove])
+
+  const handleMouseUp = useCallback(() => {
+    handleDragEnd()
+  }, [handleDragEnd])
+
+  // Touch events
+  const handleTouchStart = (e: React.TouchEvent) => {
+    handleDragStart(e.touches[0].clientX, e.touches[0].clientY)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    handleDragMove(e.touches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    handleDragEnd()
+  }
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp])
+
+  if (meetings.length === 0) {
+    return (
+      <div className="card-hack rounded-lg p-8 text-center">
+        <p className="text-gray-500">No recent events</p>
+      </div>
+    )
+  }
+
+  const meeting = meetings[currentIndex]
+  const rotation = dragOffset * 0.08
+  const opacity = 1 - Math.abs(dragOffset) / 300
+
+  const transform = `translateX(${dragOffset}px) rotate(${rotation}deg)`
+
+  return (
+    <div className="relative">
+      {/* Card stack visual - cards behind */}
+      {meetings.slice(currentIndex + 1, currentIndex + 3).map((_, idx) => (
+        <div
+          key={idx}
+          className="absolute inset-0 card-hack rounded-lg"
+          style={{
+            transform: `scale(${1 - (idx + 1) * 0.05}) translateY(${(idx + 1) * 8}px)`,
+            opacity: 0.5 - idx * 0.2,
+            zIndex: -idx - 1,
+          }}
+        />
+      ))}
+
+      {/* Main swipeable card */}
+      <div
+        ref={cardRef}
+        className={`card-hack rounded-lg p-5 cursor-grab active:cursor-grabbing select-none ${
+          isDragging ? '' : 'transition-all duration-150 ease-out'
+        }`}
+        style={{
+          transform,
+          opacity,
+        }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Swipe indicators */}
+        <div
+          className="absolute top-4 left-4 px-3 py-1 rounded border-2 border-red-500 text-red-500 font-bold text-sm rotate-[-20deg] transition-opacity"
+          style={{ opacity: dragOffset < -30 ? Math.min(1, Math.abs(dragOffset + 30) / 70) : 0 }}
+        >
+          NEXT
+        </div>
+        <div
+          className="absolute top-4 right-4 px-3 py-1 rounded border-2 border-matrix text-matrix font-bold text-sm rotate-[20deg] transition-opacity"
+          style={{ opacity: dragOffset > 30 ? Math.min(1, (dragOffset - 30) / 70) : 0 }}
+        >
+          PREV
+        </div>
+
+        <Link to={`/meetings/${meeting.slug}`} className="block" onClick={(e) => isDragging && e.preventDefault()}>
+          {/* Date Box */}
+          <div className="flex items-start gap-4 mb-3">
+            <div className="text-center shrink-0 w-14">
+              <div className="text-3xl font-bold text-matrix">
+                {new Date(meeting.date).getDate()}
+              </div>
+              <div className="text-xs text-gray-500 uppercase font-terminal">
+                {new Date(meeting.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${TYPE_COLORS[meeting.type]}`}>
+                  {TYPE_LABELS[meeting.type]}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Meeting Info */}
+          <h3 className="text-matrix font-semibold text-xl mb-2">
+            {meeting.title}
+          </h3>
+          <p className="text-gray-500 text-sm mb-4 line-clamp-3">
+            {meeting.description}
+          </p>
+          <div className="flex items-center gap-4 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              {meeting.time}
+            </span>
+            <span className="flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              {meeting.location}
+            </span>
+          </div>
+        </Link>
+      </div>
+
+      {/* Navigation dots */}
+      <div className="flex justify-center gap-2 mt-4">
+        {meetings.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentIndex(idx)}
+            className={`w-2 h-2 rounded-full transition-all ${
+              idx === currentIndex ? 'bg-matrix w-4' : 'bg-gray-600 hover:bg-gray-500'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Swipe hint */}
+      <p className="text-center text-xs text-gray-600 mt-3 font-terminal">
+        Swipe or drag to browse events
+      </p>
+    </div>
+  )
+}
 
 function MatrixRain() {
   const columns = useMemo(() => {
@@ -111,70 +310,21 @@ function App() {
               </div>
             </div>
 
-            {/* Right side - Recent Events Scroll */}
-            <div className="relative w-full min-w-0">
-              <div className="relative">
-                <h3 className="text-gray-400 text-sm font-terminal mb-4 uppercase tracking-wider">Recent Events</h3>
-                <div className="overflow-x-auto overflow-y-visible pb-4 py-2 scrollbar-thin scrollbar-thumb-matrix/30 scrollbar-track-transparent -mx-1">
-                  <div className="flex gap-4 px-1" style={{ width: 'max-content' }}>
-                    {recentMeetings.map((meeting) => (
-                      <Link
-                        key={meeting.id}
-                        to={`/meetings/${meeting.slug}`}
-                        className="block card-hack rounded-lg p-5 group hover:scale-[1.02] transition-transform w-80 shrink-0"
-                      >
-                        {/* Date Box */}
-                        <div className="flex items-start gap-4 mb-3">
-                          <div className="text-center shrink-0 w-14">
-                            <div className="text-2xl font-bold text-matrix">
-                              {new Date(meeting.date).getDate()}
-                            </div>
-                            <div className="text-xs text-gray-500 uppercase font-terminal">
-                              {new Date(meeting.date).toLocaleDateString('en-US', { month: 'short' })}
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`inline-block px-2 py-0.5 rounded text-xs font-terminal border ${TYPE_COLORS[meeting.type]}`}>
-                                {TYPE_LABELS[meeting.type]}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Meeting Info */}
-                        <h3 className="text-matrix font-semibold text-lg mb-2 group-hover:neon-text-subtle transition-all line-clamp-2">
-                          {meeting.title}
-                        </h3>
-                        <p className="text-gray-500 text-sm mb-3 line-clamp-2">
-                          {meeting.description}
-                        </p>
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {meeting.time}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {meeting.location}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+            {/* Right side - Recent Events Cards */}
+            <div className="relative w-full max-w-sm mx-auto md:mx-0">
+              <h3 className="text-gray-400 text-sm font-terminal mb-4 uppercase tracking-wider">Recent Events</h3>
+              <SwipeableCards meetings={recentMeetings} />
+              <Link
+                to="/meetings"
+                className="block w-full btn-hack rounded-lg p-4 text-center group hover:scale-[1.01] transition-transform mt-4"
+                onMouseEnter={prefetchMeetings}
+                onFocus={prefetchMeetings}
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <Calendar className="w-4 h-4" />
+                  <span className="font-semibold text-sm">VIEW ALL EVENTS</span>
                 </div>
-                <Link
-                  to="/meetings"
-                  className="block w-full btn-hack rounded-lg p-4 text-center group hover:scale-[1.01] transition-transform mt-4"
-                  onMouseEnter={prefetchMeetings}
-                  onFocus={prefetchMeetings}
-                >
-                  <div className="flex items-center justify-center gap-3">
-                    <Calendar className="w-4 h-4" />
-                    <span className="font-semibold text-sm">VIEW ALL EVENTS</span>
-                  </div>
-                </Link>
-              </div>
+              </Link>
             </div>
           </div>
         </div>
