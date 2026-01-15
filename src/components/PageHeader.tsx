@@ -7,6 +7,7 @@ function PageHeader() {
   const { user } = useAuth()
   const isEventsActive = location.pathname.startsWith('/meetings')
   const isStudyActive = location.pathname === '/study'
+  const isCTFActive = location.pathname.startsWith('/ctf')
   const isCheckInActive = location.pathname === '/live'
 
   return (
@@ -38,15 +39,15 @@ function PageHeader() {
         >
           study
         </Link>
-        {/* <Link
+        <Link
           to="/ctf"
-          className={`${location.pathname === '/ctf'
+          className={`${isCTFActive
             ? 'text-matrix neon-text-subtle'
             : 'text-gray-500 hover:text-matrix'
             } transition-colors font-terminal text-sm`}
         >
           ctf
-        </Link> */}
+        </Link>
         <Link
           to="/live"
           className={`${isCheckInActive

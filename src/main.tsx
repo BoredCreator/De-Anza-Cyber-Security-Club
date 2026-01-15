@@ -18,6 +18,12 @@ const AuthCallback = lazy(() => import('@/pages/AuthCallback'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const Settings = lazy(() => import('@/pages/Settings'))
 const CTF = lazy(() => import('@/pages/CTF'))
+const CTFChallenges = lazy(() => import('@/pages/ctf/Challenges'))
+const CTFChallengeDetail = lazy(() => import('@/pages/ctf/ChallengeDetail'))
+const CTFTeam = lazy(() => import('@/pages/ctf/Team'))
+const CTFJoinTeam = lazy(() => import('@/pages/ctf/JoinTeam'))
+const CTFLeaderboard = lazy(() => import('@/pages/ctf/Leaderboard'))
+const CTFChallengeEditor = lazy(() => import('@/pages/ctf/ChallengeEditor'))
 const Study = lazy(() => import('@/pages/Study'))
 
 const LoadingFallback = () => (
@@ -41,6 +47,14 @@ ReactDOM.createRoot(document.getElementById('deanzacybersecurityclub')!).render(
               <Route path="/meetings" element={<Meetings />} />
               <Route path="/meetings/:slug" element={<MeetingDetails />} />
               <Route path="/ctf" element={<CTF />} />
+              <Route path="/ctf/challenges" element={<CTFChallenges />} />
+              <Route path="/ctf/challenge/:id" element={<CTFChallengeDetail />} />
+              <Route path="/ctf/challenge/:id/edit" element={<CTFChallengeEditor />} />
+              <Route path="/ctf/challenges/new" element={<CTFChallengeEditor />} />
+              <Route path="/ctf/team" element={<CTFTeam />} />
+              <Route path="/ctf/join" element={<CTFJoinTeam />} />
+              <Route path="/ctf/join/:code" element={<CTFJoinTeam />} />
+              <Route path="/ctf/leaderboard" element={<CTFLeaderboard />} />
               <Route path="/study" element={<Study />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />

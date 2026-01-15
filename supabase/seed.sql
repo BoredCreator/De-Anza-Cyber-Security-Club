@@ -149,7 +149,7 @@ INSERT INTO public.meetings (slug, title, description, date, time, location, typ
     '[
         {"id": "r1", "title": "Club Constitution", "url": "#", "type": "file"},
         {"id": "r2", "title": "Fall Quarter Schedule", "url": "#", "type": "file"},
-        {"id": "r3", "title": "Discord Invite", "url": "https://discord.gg/AmjfRrJd5j", "type": "link"}
+        {"id": "r3", "title": "Discord Invite", "url": "https://discord.gg/v5JWDrZVNp", "type": "link"}
     ]'::jsonb,
     'KICKOFF'
 ),

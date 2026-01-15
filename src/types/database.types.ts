@@ -541,3 +541,71 @@ export interface Lesson extends Omit<Database['public']['Tables']['lessons']['Ro
 export interface UserProgress extends Omit<Database['public']['Tables']['user_progress']['Row'], never> {}
 
 export interface PathwayProgress extends Omit<Database['public']['Tables']['pathway_progress']['Row'], never> {}
+
+// CTF Team Types
+export interface CTFTeam {
+  id: string
+  name: string
+  invite_code: string
+  captain_id: string
+  created_at: string
+  invite_expires_at?: string | null
+  invite_max_uses?: number | null
+  invite_uses_count?: number
+}
+
+export interface CTFTeamMember {
+  id: string
+  team_id: string
+  user_id: string
+  joined_at: string
+  // Joined data
+  user?: {
+    id: string
+    display_name: string
+    photo_url: string | null
+  }
+}
+
+export interface CTFSubmission {
+  id: string
+  team_id: string
+  challenge_id: string
+  submitted_flag: string
+  is_correct: boolean
+  points_awarded: number
+  submitted_at: string
+  submitted_by: string
+  // Joined data
+  user?: {
+    id: string
+    display_name: string
+  }
+}
+
+export interface CTFTeamWithMembers extends CTFTeam {
+  members: CTFTeamMember[]
+  captain?: {
+    id: string
+    display_name: string
+    photo_url: string | null
+  }
+}
+
+export interface LeaderboardEntry {
+  team_id: string
+  team_name: string
+  total_points: number
+  beast_solves: number
+  hard_solves: number
+  medium_solves: number
+  easy_solves: number
+  total_solves: number
+  incorrect_attempts: number
+  last_solve_at: string | null
+  members: {
+    id: string
+    display_name: string
+    photo_url: string | null
+  }[]
+}
