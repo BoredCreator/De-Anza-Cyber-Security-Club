@@ -30,36 +30,81 @@ function Leaderboard() {
 
   const fetchLeaderboard = async () => {
     try {
-      // Fetch all teams with members
+      // Fetch all teams with members (user_ids only)
       const { data: teams } = await supabase
         .from('ctf_teams')
         .select(`
           id,
           name,
-          members:ctf_team_members(
-            user:users(id, display_name, photo_url)
-          )
+          members:ctf_team_members(user_id)
         `)
 
-      // Fetch all submissions
+      // Collect all unique user IDs from team members
+      const memberUserIds = new Set<string>()
+      teams?.forEach(team => {
+        team.members?.forEach((m: { user_id: string }) => {
+          memberUserIds.add(m.user_id)
+        })
+      })
+
+      // Fetch public profiles for all members (uses public_profiles view)
+      const { data: memberProfiles } = memberUserIds.size > 0
+        ? await supabase
+            .from('public_profiles')
+            .select('id, display_name, photo_url')
+            .in('id', Array.from(memberUserIds))
+        : { data: [] }
+
+      // Create a map for quick profile lookup
+      const profileMap = new Map(
+        memberProfiles?.map(p => [p.id, p]) || []
+      )
+
+      // Map profiles to team members
+      const teamsWithProfiles = teams?.map(team => ({
+        ...team,
+        members: team.members?.map((m: { user_id: string }) => ({
+          user: profileMap.get(m.user_id)
+        })) || []
+      }))
+
+      // Fetch all submissions with team names
       const { data: allSubmissions } = await supabase
         .from('ctf_submissions')
         .select(`
           *,
-          user:users(id, display_name),
           team:ctf_teams(name)
         `)
         .order('submitted_at', { ascending: false })
 
-      if (!teams) {
+      // Get submitter profiles from public_profiles
+      const submitterIds = new Set(allSubmissions?.map(s => s.submitted_by) || [])
+      const { data: submitterProfiles } = submitterIds.size > 0
+        ? await supabase
+            .from('public_profiles')
+            .select('id, display_name')
+            .in('id', Array.from(submitterIds))
+        : { data: [] }
+
+      const submitterMap = new Map(
+        submitterProfiles?.map(p => [p.id, p]) || []
+      )
+
+      // Map submitter profiles to submissions
+      const submissionsWithProfiles = allSubmissions?.map(sub => ({
+        ...sub,
+        user: submitterMap.get(sub.submitted_by)
+      }))
+
+      if (!teamsWithProfiles) {
         setLoading(false)
         setLoaded(true)
         return
       }
 
       // Calculate leaderboard entries
-      const entries: LeaderboardEntry[] = teams.map(team => {
-        const teamSubmissions = allSubmissions?.filter(s => s.team_id === team.id) || []
+      const entries: LeaderboardEntry[] = teamsWithProfiles.map(team => {
+        const teamSubmissions = submissionsWithProfiles?.filter(s => s.team_id === team.id) || []
         const correctSubmissions = teamSubmissions.filter(s => s.is_correct)
 
         // Count solves by difficulty
@@ -118,7 +163,7 @@ function Leaderboard() {
       setLeaderboard(entries)
 
       // Set recent submissions with team name
-      const recentSubs = allSubmissions?.slice(0, 50).map(sub => ({
+      const recentSubs = submissionsWithProfiles?.slice(0, 50).map(sub => ({
         ...sub,
         team_name: (sub as any).team?.name
       })) || []
