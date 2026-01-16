@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { ChevronLeft, Trophy, Star, Clock, Check, Close } from '@/lib/cyberIcon'
+import { ChevronLeft, Trophy, Star, Clock, Check, Close, ChevronDown } from '@/lib/cyberIcon'
 import { challenges } from './challengeData'
 import { difficultyInfo } from './types'
 import { Tabs } from '@/components/Tabs'
@@ -15,12 +15,19 @@ interface TeamSubmission extends CTFSubmission {
   }
 }
 
+interface TeamChallengeDetails {
+  solved: { id: string; title: string; difficulty: string; points: number; solvedAt: string }[]
+  wrong: { id: string; title: string; difficulty: string; submittedAt: string }[]
+}
+
 function Leaderboard() {
   const [loaded, setLoaded] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [recentSubmissions, setRecentSubmissions] = useState<TeamSubmission[]>([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'rankings' | 'activity'>('rankings')
+  const [expandedTeam, setExpandedTeam] = useState<string | null>(null)
+  const [teamChallengeDetails, setTeamChallengeDetails] = useState<Record<string, TeamChallengeDetails>>({})
 
   useEffect(() => {
     fetchLeaderboard()
@@ -102,10 +109,13 @@ function Leaderboard() {
         return
       }
 
-      // Calculate leaderboard entries
+      // Calculate leaderboard entries and challenge details
+      const challengeDetailsMap: Record<string, TeamChallengeDetails> = {}
+
       const entries: LeaderboardEntry[] = teamsWithProfiles.map(team => {
         const teamSubmissions = submissionsWithProfiles?.filter(s => s.team_id === team.id) || []
         const correctSubmissions = teamSubmissions.filter(s => s.is_correct)
+        const incorrectSubmissions = teamSubmissions.filter(s => !s.is_correct)
 
         // Count solves by difficulty
         let beastSolves = 0
@@ -114,6 +124,8 @@ function Leaderboard() {
         let easySolves = 0
         let totalPoints = 0
 
+        // Build solved challenges list
+        const solvedChallenges: TeamChallengeDetails['solved'] = []
         correctSubmissions.forEach(sub => {
           const challenge = challenges.find(c => c.id === sub.challenge_id)
           if (challenge) {
@@ -124,8 +136,38 @@ function Leaderboard() {
               case 'medium': mediumSolves++; break
               case 'easy': easySolves++; break
             }
+            solvedChallenges.push({
+              id: challenge.id,
+              title: challenge.title,
+              difficulty: challenge.difficulty,
+              points: challenge.points,
+              solvedAt: sub.submitted_at
+            })
           }
         })
+
+        // Build wrong submissions list (ALL is_correct = false submissions)
+        const wrongSubmissions: TeamChallengeDetails['wrong'] = []
+        incorrectSubmissions.forEach(sub => {
+          const challenge = challenges.find(c => c.id === sub.challenge_id)
+          if (challenge) {
+            wrongSubmissions.push({
+              id: sub.id, // Use submission ID as key since same challenge can have multiple wrong submissions
+              title: challenge.title,
+              difficulty: challenge.difficulty,
+              submittedAt: sub.submitted_at
+            })
+          }
+        })
+
+        // Sort solved by time (most recent first), wrong by time (most recent first)
+        solvedChallenges.sort((a, b) => new Date(b.solvedAt).getTime() - new Date(a.solvedAt).getTime())
+        wrongSubmissions.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+
+        challengeDetailsMap[team.id] = {
+          solved: solvedChallenges,
+          wrong: wrongSubmissions
+        }
 
         const lastSolve = correctSubmissions.length > 0
           ? correctSubmissions.reduce((latest, sub) =>
@@ -147,6 +189,8 @@ function Leaderboard() {
           members: team.members?.map((m: any) => m.user).filter(Boolean) || []
         }
       })
+
+      setTeamChallengeDetails(challengeDetailsMap)
 
       // Sort by: total points desc, then by last solve time asc (earlier solves rank higher)
       entries.sort((a, b) => {
@@ -304,24 +348,25 @@ function Leaderboard() {
                             {entry.team_name}
                           </h3>
                           <div className="flex items-center gap-1 mt-1">
-                            {entry.members.slice(0, 4).map((member, i) => (
-                              member.photo_url ? (
-                                <img
-                                  key={member.id}
-                                  src={member.photo_url}
-                                  alt={member.display_name}
-                                  className="w-6 h-6 rounded-full border border-gray-600"
-                                  title={member.display_name}
-                                />
-                              ) : (
-                                <div
-                                  key={member.id}
-                                  className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-400 border border-gray-600"
-                                  title={member.display_name}
-                                >
-                                  {member.display_name.charAt(0).toUpperCase()}
+                            {entry.members.slice(0, 4).map((member) => (
+                              <div key={member.id} className="relative group/avatar">
+                                {member.photo_url ? (
+                                  <img
+                                    src={member.photo_url}
+                                    alt={member.display_name}
+                                    className="w-6 h-6 rounded-full border border-gray-600 cursor-pointer"
+                                  />
+                                ) : (
+                                  <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-400 border border-gray-600 cursor-pointer">
+                                    {member.display_name.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 pointer-events-none transition-opacity duration-150 z-10 border border-gray-700">
+                                  {member.display_name}
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
                                 </div>
-                              )
+                              </div>
                             ))}
                             <span className="text-xs text-gray-500 ml-1">
                               {entry.members.length} member{entry.members.length !== 1 ? 's' : ''}
@@ -337,36 +382,49 @@ function Leaderboard() {
                           <div className="text-xs text-gray-500">points</div>
                         </div>
 
-                        {/* Solves Breakdown */}
+                        {/* Solves Breakdown - Clickable */}
                         <div className="col-span-4 mb-3 md:mb-0">
-                          <div className="flex items-center justify-center gap-2 flex-wrap">
-                            {entry.beast_solves > 0 && (
-                              <span className="px-2 py-1 rounded text-xs font-terminal bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center gap-1">
-                                <Star className="w-3 h-3" />
-                                {entry.beast_solves} Beast
-                              </span>
+                          <button
+                            onClick={() => setExpandedTeam(expandedTeam === entry.team_id ? null : entry.team_id)}
+                            className="w-full cursor-pointer group"
+                          >
+                            <div className="flex items-center justify-center gap-2 flex-wrap">
+                              {entry.beast_solves > 0 && (
+                                <span className="px-2 py-1 rounded text-xs font-terminal bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center gap-1">
+                                  <Star className="w-3 h-3" />
+                                  {entry.beast_solves} Beast
+                                </span>
+                              )}
+                              {entry.hard_solves > 0 && (
+                                <span className="px-2 py-1 rounded text-xs font-terminal bg-red-500/20 text-red-400 border border-red-500/30">
+                                  {entry.hard_solves} Hard
+                                </span>
+                              )}
+                              {entry.medium_solves > 0 && (
+                                <span className="px-2 py-1 rounded text-xs font-terminal bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                                  {entry.medium_solves} Med
+                                </span>
+                              )}
+                              {entry.easy_solves > 0 && (
+                                <span className="px-2 py-1 rounded text-xs font-terminal bg-green-500/20 text-green-400 border border-green-500/30">
+                                  {entry.easy_solves} Easy
+                                </span>
+                              )}
+                              {entry.incorrect_attempts > 0 && (
+                                <span className="px-2 py-1 rounded text-xs font-terminal bg-red-500/10 text-red-400/70 border border-red-500/20">
+                                  {entry.incorrect_attempts} wrong
+                                </span>
+                              )}
+                              {(entry.total_solves > 0 || entry.incorrect_attempts > 0) && (
+                                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${expandedTeam === entry.team_id ? 'rotate-180' : ''}`} />
+                              )}
+                            </div>
+                            {(entry.total_solves > 0 || entry.incorrect_attempts > 0) && (
+                              <div className="text-xs text-gray-600 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                Tap to see details
+                              </div>
                             )}
-                            {entry.hard_solves > 0 && (
-                              <span className="px-2 py-1 rounded text-xs font-terminal bg-red-500/20 text-red-400 border border-red-500/30">
-                                {entry.hard_solves} Hard
-                              </span>
-                            )}
-                            {entry.medium_solves > 0 && (
-                              <span className="px-2 py-1 rounded text-xs font-terminal bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                                {entry.medium_solves} Med
-                              </span>
-                            )}
-                            {entry.easy_solves > 0 && (
-                              <span className="px-2 py-1 rounded text-xs font-terminal bg-green-500/20 text-green-400 border border-green-500/30">
-                                {entry.easy_solves} Easy
-                              </span>
-                            )}
-                            {entry.incorrect_attempts > 0 && (
-                              <span className="px-2 py-1 rounded text-xs font-terminal bg-red-500/10 text-red-400/70 border border-red-500/20">
-                                {entry.incorrect_attempts} wrong
-                              </span>
-                            )}
-                          </div>
+                          </button>
                         </div>
 
                         {/* Last Solve */}
@@ -381,6 +439,83 @@ function Leaderboard() {
                           )}
                         </div>
                       </div>
+
+                      {/* Expanded Challenge Details */}
+                      {expandedTeam === entry.team_id && teamChallengeDetails[entry.team_id] && (
+                        <div className="mt-4 pt-4 border-t border-gray-700/50 animate-in slide-in-from-top-2 duration-200">
+                          <div className="grid md:grid-cols-2 gap-4">
+                            {/* Solved Challenges */}
+                            <div>
+                              <h4 className="text-sm font-terminal text-green-400 mb-3 flex items-center gap-2">
+                                <Check className="w-4 h-4" />
+                                Solved ({teamChallengeDetails[entry.team_id].solved.length})
+                              </h4>
+                              {teamChallengeDetails[entry.team_id].solved.length === 0 ? (
+                                <p className="text-gray-600 text-sm">No challenges solved yet</p>
+                              ) : (
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                                  {teamChallengeDetails[entry.team_id].solved.map(challenge => (
+                                    <div
+                                      key={challenge.id}
+                                      className="flex items-center justify-between p-2 rounded-lg bg-green-500/5 border border-green-500/20"
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className={`px-1.5 py-0.5 rounded text-xs font-terminal shrink-0 ${
+                                          challenge.difficulty === 'beast' ? 'bg-purple-500/20 text-purple-400' :
+                                          challenge.difficulty === 'hard' ? 'bg-red-500/20 text-red-400' :
+                                          challenge.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                          'bg-green-500/20 text-green-400'
+                                        }`}>
+                                          {challenge.difficulty === 'beast' && <Star className="w-3 h-3 inline mr-1" />}
+                                          {difficultyInfo[challenge.difficulty as keyof typeof difficultyInfo]?.name || challenge.difficulty}
+                                        </span>
+                                        <span className="text-gray-300 text-sm truncate">{challenge.title}</span>
+                                      </div>
+                                      <span className="text-green-400 text-sm font-bold shrink-0 ml-2">+{challenge.points}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Wrong Submissions (all is_correct = false) */}
+                            <div>
+                              <h4 className="text-sm font-terminal text-red-400 mb-3 flex items-center gap-2">
+                                <Close className="w-4 h-4" />
+                                Wrong Submissions ({teamChallengeDetails[entry.team_id].wrong.length})
+                              </h4>
+                              {teamChallengeDetails[entry.team_id].wrong.length === 0 ? (
+                                <p className="text-gray-600 text-sm">No wrong submissions</p>
+                              ) : (
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                                  {teamChallengeDetails[entry.team_id].wrong.map(submission => (
+                                    <div
+                                      key={submission.id}
+                                      className="flex items-center justify-between p-2 rounded-lg bg-red-500/5 border border-red-500/20"
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className={`px-1.5 py-0.5 rounded text-xs font-terminal shrink-0 ${
+                                          submission.difficulty === 'beast' ? 'bg-purple-500/20 text-purple-400' :
+                                          submission.difficulty === 'hard' ? 'bg-red-500/20 text-red-400' :
+                                          submission.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                          'bg-green-500/20 text-green-400'
+                                        }`}>
+                                          {submission.difficulty === 'beast' && <Star className="w-3 h-3 inline mr-1" />}
+                                          {difficultyInfo[submission.difficulty as keyof typeof difficultyInfo]?.name || submission.difficulty}
+                                        </span>
+                                        <span className="text-gray-300 text-sm truncate">{submission.title}</span>
+                                      </div>
+                                      <span className="text-gray-500 text-xs shrink-0 ml-2">
+                                        {formatTime(submission.submittedAt)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}

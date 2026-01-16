@@ -113,6 +113,10 @@ function MeetingDetails() {
     RegistrationWithUser[]
   >([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+  const [pastEventAttendees, setPastEventAttendees] = useState<
+    RegistrationWithUser[]
+  >([]);
+  const [loadingAttendees, setLoadingAttendees] = useState(false);
 
   const isOfficer = userProfile?.is_officer ?? false;
 
@@ -176,6 +180,51 @@ function MeetingDetails() {
 
     fetchRegistrationData();
   }, [meeting, user]);
+
+  // Fetch attendees for past events
+  useEffect(() => {
+    async function fetchPastEventAttendees() {
+      if (!meeting || !isPast(meeting.date)) return;
+
+      setLoadingAttendees(true);
+      try {
+        // Fetch all registrations for this meeting (attended or registered)
+        const { data: registrations } = await supabase
+          .from("registrations")
+          .select("*")
+          .eq("meeting_id", meeting.id)
+          .in("status", ["attended", "registered"])
+          .order("registered_at", { ascending: false });
+
+        if (registrations && registrations.length > 0) {
+          // Fetch public profiles for all attendees
+          const userIds = registrations.map((r) => r.user_id);
+          const { data: profiles } = await supabase
+            .from("public_profiles")
+            .select("id, display_name, photo_url")
+            .in("id", userIds);
+
+          // Map profiles to registrations
+          const attendeesWithProfiles: RegistrationWithUser[] = registrations.map(
+            (reg) => ({
+              ...reg,
+              user: profiles?.find((p) => p.id === reg.user_id) as UserProfile | undefined,
+            })
+          );
+
+          setPastEventAttendees(attendeesWithProfiles);
+        } else {
+          setPastEventAttendees([]);
+        }
+      } catch (err) {
+        console.error("Error fetching past event attendees:", err);
+      } finally {
+        setLoadingAttendees(false);
+      }
+    }
+
+    fetchPastEventAttendees();
+  }, [meeting]);
 
   // ESC key to close fullscreen code
   useEffect(() => {
@@ -326,12 +375,10 @@ function MeetingDetails() {
           .order("registered_at", { ascending: false });
 
         if (registrations && registrations.length > 0) {
-          // Fetch user profiles for all registrations
+          // Fetch user profiles for all registrations using officer function
           const userIds = registrations.map((r) => r.user_id);
           const { data: profiles } = await supabase
-            .from("users")
-            .select("id, display_name, photo_url, email")
-            .in("id", userIds);
+            .rpc("get_user_profiles_for_officers", { user_ids: userIds });
 
           // Map users to registrations
           const registrationsWithUsers: RegistrationWithUser[] =
@@ -1532,6 +1579,72 @@ function MeetingDetails() {
                         )}
                       </div>
                     )}
+
+                  {/* Past Event - Attendance Summary */}
+                  {isPast(meeting.date) && (
+                    <div className="pt-6 border-t border-gray-800">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 rounded-lg bg-matrix/10">
+                          <Users className="w-5 h-5 text-matrix" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">
+                            {loadingAttendees ? (
+                              <span className="text-gray-400">Loading...</span>
+                            ) : (
+                              <>
+                                {pastEventAttendees.length}{" "}
+                                {pastEventAttendees.length === 1
+                                  ? "person"
+                                  : "people"}{" "}
+                                attended
+                              </>
+                            )}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            Event participants
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Attendees List */}
+                      {!loadingAttendees && pastEventAttendees.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {pastEventAttendees.map((attendee) => (
+                            <div
+                              key={attendee.id}
+                              className="flex items-center gap-2 p-2 rounded-lg bg-terminal-alt border border-gray-800"
+                            >
+                              {attendee.user?.photo_url ? (
+                                <img
+                                  src={attendee.user.photo_url}
+                                  alt={attendee.user.display_name}
+                                  className="w-8 h-8 rounded-full object-cover border border-gray-600"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600">
+                                  <span className="text-gray-400 text-xs font-bold">
+                                    {attendee.user?.display_name
+                                      ?.charAt(0)
+                                      .toUpperCase() || "?"}
+                                  </span>
+                                </div>
+                              )}
+                              <span className="text-sm text-gray-300 truncate">
+                                {attendee.user?.display_name || "Unknown"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {!loadingAttendees && pastEventAttendees.length === 0 && (
+                        <p className="text-gray-500 text-sm">
+                          No attendance records for this event.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Registration Section */}
                   {!isPast(meeting.date) && (

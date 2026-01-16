@@ -556,95 +556,141 @@ function Team() {
                       </p>
                     )}
 
-                    {team.members.length < 4 && (
-                      <div className="mt-6 pt-4 border-t border-gray-700">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-xs text-gray-500 font-terminal">INVITE LINK</p>
-                          {user?.id === team.captain_id && (
-                            <button
-                              onClick={() => setShowInviteSettings(!showInviteSettings)}
-                              className="text-xs text-gray-400 hover:text-matrix transition-colors flex items-center gap-1"
-                            >
-                              <Settings className="w-3 h-3" />
-                              Settings
-                            </button>
+                    {team.members.length < 4 && (() => {
+                      // Check if invite link is expired or used up
+                      const isExpired = team.invite_expires_at && new Date(team.invite_expires_at) < new Date()
+                      const isUsedUp = team.invite_max_uses && (team.invite_uses_count || 0) >= team.invite_max_uses
+                      const isInviteInvalid = isExpired || isUsedUp
+
+                      return (
+                        <div className="mt-6 pt-4 border-t border-gray-700">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-xs text-gray-500 font-terminal">INVITE LINK</p>
+                            {user?.id === team.captain_id && !isInviteInvalid && (
+                              <button
+                                onClick={() => setShowInviteSettings(!showInviteSettings)}
+                                className="text-xs text-gray-400 hover:text-matrix transition-colors flex items-center gap-1"
+                              >
+                                <Settings className="w-3 h-3" />
+                                Settings
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Invalid Invite State - Expired or Used Up */}
+                          {isInviteInvalid ? (
+                            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                              <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-lg bg-red-500/20">
+                                  <Settings className="w-5 h-5 text-red-400" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-red-400 font-medium mb-1">
+                                    {isExpired ? 'Invite Link Expired' : 'Use Limit Reached'}
+                                  </h4>
+                                  <p className="text-gray-400 text-sm mb-3">
+                                    {isExpired
+                                      ? `This invite link expired on ${new Date(team.invite_expires_at!).toLocaleDateString()}.`
+                                      : `This invite link has reached its maximum of ${team.invite_max_uses} uses.`
+                                    }
+                                    {user?.id === team.captain_id
+                                      ? ' Generate a new invite link to invite more members.'
+                                      : ' Ask your team captain to generate a new invite link.'
+                                    }
+                                  </p>
+                                  {user?.id === team.captain_id && (
+                                    <button
+                                      onClick={() => {
+                                        setShowInviteSettings(true)
+                                        setShowRegenerateDialog(true)
+                                      }}
+                                      className="btn-hack-filled rounded-lg px-4 py-2 text-sm"
+                                    >
+                                      Generate New Invite Link
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Invite Settings Panel */}
+                              {showInviteSettings && user?.id === team.captain_id && (
+                                <div className="mb-4 p-3 rounded-lg bg-gray-800/50 border border-gray-700 space-y-3">
+                                  <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Expires in</label>
+                                    <select
+                                      value={inviteExpiration}
+                                      onChange={(e) => setInviteExpiration(e.target.value)}
+                                      className="w-full input-hack rounded-lg text-sm py-2"
+                                    >
+                                      <option value="1">1 day</option>
+                                      <option value="2">2 days</option>
+                                      <option value="7">7 days</option>
+                                      <option value="14">14 days</option>
+                                      <option value="30">30 days</option>
+                                      <option value="never">Never</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-gray-400 block mb-1">Max uses</label>
+                                    <select
+                                      value={inviteMaxUses}
+                                      onChange={(e) => setInviteMaxUses(e.target.value)}
+                                      className="w-full input-hack rounded-lg text-sm py-2"
+                                    >
+                                      <option value="unlimited">Unlimited (until full)</option>
+                                      <option value="1">1 use</option>
+                                      <option value="2">2 uses</option>
+                                      <option value="3">3 uses</option>
+                                      <option value="5">5 uses</option>
+                                      <option value="10">10 uses</option>
+                                    </select>
+                                  </div>
+                                  <button
+                                    onClick={() => setShowRegenerateDialog(true)}
+                                    className="w-full px-4 py-2 text-sm rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+                                  >
+                                    Regenerate Link
+                                  </button>
+                                  <p className="text-xs text-gray-500 text-center">
+                                    Regenerating will invalidate the current invite link.
+                                  </p>
+                                </div>
+                              )}
+
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={`${window.location.origin}/ctf/join/${team.invite_code}`}
+                                  readOnly
+                                  className="flex-1 input-hack rounded-lg text-sm py-2"
+                                />
+                                <button
+                                  onClick={copyInviteLink}
+                                  className="btn-hack rounded-lg px-4 flex items-center gap-2"
+                                >
+                                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                </button>
+                              </div>
+
+                              {/* Show current invite settings if they exist */}
+                              {team.invite_expires_at && (
+                                <p className="text-xs text-gray-500 mt-2">
+                                  Expires: {new Date(team.invite_expires_at).toLocaleDateString()}
+                                  {team.invite_max_uses && ` • ${team.invite_max_uses - (team.invite_uses_count || 0)} uses remaining`}
+                                </p>
+                              )}
+                              {!team.invite_expires_at && team.invite_max_uses && (
+                                <p className="text-xs text-gray-500 mt-2">
+                                  {team.invite_max_uses - (team.invite_uses_count || 0)} uses remaining
+                                </p>
+                              )}
+                            </>
                           )}
                         </div>
-
-                        {/* Invite Settings Panel */}
-                        {showInviteSettings && user?.id === team.captain_id && (
-                          <div className="mb-4 p-3 rounded-lg bg-gray-800/50 border border-gray-700 space-y-3">
-                            <div>
-                              <label className="text-xs text-gray-400 block mb-1">Expires in</label>
-                              <select
-                                value={inviteExpiration}
-                                onChange={(e) => setInviteExpiration(e.target.value)}
-                                className="w-full input-hack rounded-lg text-sm py-2"
-                              >
-                                <option value="1">1 day</option>
-                                <option value="2">2 days</option>
-                                <option value="7">7 days</option>
-                                <option value="14">14 days</option>
-                                <option value="30">30 days</option>
-                                <option value="never">Never</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-xs text-gray-400 block mb-1">Max uses</label>
-                              <select
-                                value={inviteMaxUses}
-                                onChange={(e) => setInviteMaxUses(e.target.value)}
-                                className="w-full input-hack rounded-lg text-sm py-2"
-                              >
-                                <option value="unlimited">Unlimited (until full)</option>
-                                <option value="1">1 use</option>
-                                <option value="2">2 uses</option>
-                                <option value="3">3 uses</option>
-                                <option value="5">5 uses</option>
-                                <option value="10">10 uses</option>
-                              </select>
-                            </div>
-                            <button
-                              onClick={() => setShowRegenerateDialog(true)}
-                              className="w-full px-4 py-2 text-sm rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
-                            >
-                              Regenerate Link
-                            </button>
-                            <p className="text-xs text-gray-500 text-center">
-                              Regenerating will invalidate the current invite link.
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={`${window.location.origin}/ctf/join/${team.invite_code}`}
-                            readOnly
-                            className="flex-1 input-hack rounded-lg text-sm py-2"
-                          />
-                          <button
-                            onClick={copyInviteLink}
-                            className="btn-hack rounded-lg px-4 flex items-center gap-2"
-                          >
-                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                          </button>
-                        </div>
-
-                        {/* Show current invite settings if they exist */}
-                        {team.invite_expires_at && (
-                          <p className="text-xs text-gray-500 mt-2">
-                            Expires: {new Date(team.invite_expires_at).toLocaleDateString()}
-                            {team.invite_max_uses && ` • ${team.invite_max_uses - (team.invite_uses_count || 0)} uses remaining`}
-                          </p>
-                        )}
-                        {!team.invite_expires_at && team.invite_max_uses && (
-                          <p className="text-xs text-gray-500 mt-2">
-                            {team.invite_max_uses - (team.invite_uses_count || 0)} uses remaining
-                          </p>
-                        )}
-                      </div>
-                    )}
+                      )
+                    })()}
                   </div>
                 </div>
               </div>
