@@ -61,7 +61,9 @@ function Officer() {
     totalTeams: 0,
     totalOfficers: 0,
   });
-  const [recentRegistrations, setRecentRegistrations] = useState<RecentRegistration[]>([]);
+  const [recentRegistrations, setRecentRegistrations] = useState<
+    RecentRegistration[]
+  >([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -96,10 +98,20 @@ function Officer() {
         ] = await Promise.all([
           supabase.from("users").select("*", { count: "exact", head: true }),
           supabase.from("meetings").select("*", { count: "exact", head: true }),
-          supabase.from("meetings").select("*", { count: "exact", head: true }).gte("date", today),
-          supabase.from("registrations").select("*", { count: "exact", head: true }),
-          supabase.from("ctf_teams").select("*", { count: "exact", head: true }),
-          supabase.from("users").select("*", { count: "exact", head: true }).eq("is_officer", true),
+          supabase
+            .from("meetings")
+            .select("*", { count: "exact", head: true })
+            .gte("date", today),
+          supabase
+            .from("registrations")
+            .select("*", { count: "exact", head: true }),
+          supabase
+            .from("ctf_teams")
+            .select("*", { count: "exact", head: true }),
+          supabase
+            .from("users")
+            .select("*", { count: "exact", head: true })
+            .eq("is_officer", true),
         ]);
 
         setStats({
@@ -121,11 +133,19 @@ function Officer() {
         if (registrations && registrations.length > 0) {
           // Fetch user profiles and meetings
           const userIds = [...new Set(registrations.map((r) => r.user_id))];
-          const meetingIds = [...new Set(registrations.map((r) => r.meeting_id))];
+          const meetingIds = [
+            ...new Set(registrations.map((r) => r.meeting_id)),
+          ];
 
           const [{ data: profiles }, { data: meetings }] = await Promise.all([
-            supabase.from("public_profiles").select("id, display_name, photo_url").in("id", userIds),
-            supabase.from("meetings").select("id, title, slug, date").in("id", meetingIds),
+            supabase
+              .from("public_profiles")
+              .select("id, display_name, photo_url")
+              .in("id", userIds),
+            supabase
+              .from("meetings")
+              .select("id, title, slug, date")
+              .in("id", meetingIds),
           ]);
 
           const registrationsWithData = registrations.map((reg) => ({
@@ -169,7 +189,10 @@ function Officer() {
     setShowUsers(!showUsers);
   };
 
-  const toggleOfficerStatus = async (userId: string, currentStatus: boolean) => {
+  const toggleOfficerStatus = async (
+    userId: string,
+    currentStatus: boolean,
+  ) => {
     setTogglingOfficer(userId);
     try {
       const { error } = await supabase.rpc("toggle_officer_status", {
@@ -180,12 +203,18 @@ function Officer() {
       if (error) throw error;
 
       // Update local state
-      setUsers(users.map((u) => (u.id === userId ? { ...u, is_officer: !currentStatus } : u)));
+      setUsers(
+        users.map((u) =>
+          u.id === userId ? { ...u, is_officer: !currentStatus } : u,
+        ),
+      );
 
       // Update stats
       setStats((prev) => ({
         ...prev,
-        totalOfficers: currentStatus ? prev.totalOfficers - 1 : prev.totalOfficers + 1,
+        totalOfficers: currentStatus
+          ? prev.totalOfficers - 1
+          : prev.totalOfficers + 1,
       }));
     } catch (err) {
       console.error("Error toggling officer status:", err);
@@ -228,7 +257,9 @@ function Officer() {
         >
           <div className="flex items-center gap-3 mb-6">
             <span className="text-matrix neon-text-subtle">$</span>
-            <span className="text-gray-400 font-terminal">sudo ./officer-dashboard.sh</span>
+            <span className="text-gray-400 font-terminal">
+              sudo ./officer-dashboard.sh
+            </span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -236,7 +267,9 @@ function Officer() {
               <Shield className="w-8 h-8 text-hack-purple" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-matrix neon-text">Officer Dashboard</h1>
+              <h1 className="text-3xl font-bold text-matrix neon-text">
+                Officer Dashboard
+              </h1>
               <p className="text-gray-500">Manage club operations</p>
             </div>
           </div>
@@ -250,7 +283,9 @@ function Officer() {
             <div className="p-4 rounded-xl bg-terminal-alt border border-gray-800 hover:border-matrix/50 transition-colors">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-matrix" />
-                <span className="text-xs text-gray-500 font-terminal">MEMBERS</span>
+                <span className="text-xs text-gray-500 font-terminal">
+                  MEMBERS
+                </span>
               </div>
               <div className="text-2xl font-bold text-white">
                 {loadingStats ? "-" : stats.totalUsers}
@@ -260,7 +295,9 @@ function Officer() {
             <div className="p-4 rounded-xl bg-terminal-alt border border-gray-800 hover:border-hack-purple/50 transition-colors">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="w-4 h-4 text-hack-purple" />
-                <span className="text-xs text-gray-500 font-terminal">OFFICERS</span>
+                <span className="text-xs text-gray-500 font-terminal">
+                  OFFICERS
+                </span>
               </div>
               <div className="text-2xl font-bold text-white">
                 {loadingStats ? "-" : stats.totalOfficers}
@@ -270,7 +307,9 @@ function Officer() {
             <div className="p-4 rounded-xl bg-terminal-alt border border-gray-800 hover:border-hack-cyan/50 transition-colors">
               <div className="flex items-center gap-2 mb-2">
                 <Calendar className="w-4 h-4 text-hack-cyan" />
-                <span className="text-xs text-gray-500 font-terminal">MEETINGS</span>
+                <span className="text-xs text-gray-500 font-terminal">
+                  MEETINGS
+                </span>
               </div>
               <div className="text-2xl font-bold text-white">
                 {loadingStats ? "-" : stats.totalMeetings}
@@ -280,7 +319,9 @@ function Officer() {
             <div className="p-4 rounded-xl bg-terminal-alt border border-gray-800 hover:border-hack-yellow/50 transition-colors">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-4 h-4 text-hack-yellow" />
-                <span className="text-xs text-gray-500 font-terminal">UPCOMING</span>
+                <span className="text-xs text-gray-500 font-terminal">
+                  UPCOMING
+                </span>
               </div>
               <div className="text-2xl font-bold text-white">
                 {loadingStats ? "-" : stats.upcomingMeetings}
@@ -290,7 +331,9 @@ function Officer() {
             <div className="p-4 rounded-xl bg-terminal-alt border border-gray-800 hover:border-matrix/50 transition-colors">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-4 h-4 text-matrix" />
-                <span className="text-xs text-gray-500 font-terminal">RSVPS</span>
+                <span className="text-xs text-gray-500 font-terminal">
+                  RSVPS
+                </span>
               </div>
               <div className="text-2xl font-bold text-white">
                 {loadingStats ? "-" : stats.totalRegistrations}
@@ -300,7 +343,9 @@ function Officer() {
             <div className="p-4 rounded-xl bg-terminal-alt border border-gray-800 hover:border-hack-red/50 transition-colors">
               <div className="flex items-center gap-2 mb-2">
                 <Trophy className="w-4 h-4 text-hack-red" />
-                <span className="text-xs text-gray-500 font-terminal">CTF TEAMS</span>
+                <span className="text-xs text-gray-500 font-terminal">
+                  CTF TEAMS
+                </span>
               </div>
               <div className="text-2xl font-bold text-white">
                 {loadingStats ? "-" : stats.totalTeams}
@@ -313,7 +358,9 @@ function Officer() {
         <section
           className={`mb-8 transition-all duration-700 delay-150 ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
         >
-          <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+          <h2 className="text-lg font-semibold text-white mb-4">
+            Quick Actions
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link
               to="/meetings"
@@ -324,7 +371,9 @@ function Officer() {
                   <div className="p-2 rounded-lg bg-hack-cyan/10 text-hack-cyan">
                     <Calendar className="w-5 h-5" />
                   </div>
-                  <span className="font-medium text-gray-200">Manage Meetings</span>
+                  <span className="font-medium text-gray-200">
+                    Manage Meetings
+                  </span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-hack-cyan group-hover:translate-x-1 transition-all" />
               </div>
@@ -339,7 +388,9 @@ function Officer() {
                   <div className="p-2 rounded-lg bg-hack-red/10 text-hack-red">
                     <Trophy className="w-5 h-5" />
                   </div>
-                  <span className="font-medium text-gray-200">CTF Leaderboard</span>
+                  <span className="font-medium text-gray-200">
+                    CTF Leaderboard
+                  </span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-hack-red group-hover:translate-x-1 transition-all" />
               </div>
@@ -354,7 +405,9 @@ function Officer() {
                   <div className="p-2 rounded-lg bg-hack-purple/10 text-hack-purple">
                     <Star className="w-5 h-5" />
                   </div>
-                  <span className="font-medium text-gray-200">CTF Challenges</span>
+                  <span className="font-medium text-gray-200">
+                    CTF Challenges
+                  </span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-hack-purple group-hover:translate-x-1 transition-all" />
               </div>
@@ -391,7 +444,9 @@ function Officer() {
                 <div className="terminal-dot red" />
                 <div className="terminal-dot yellow" />
                 <div className="terminal-dot green" />
-                <span className="ml-4 text-xs text-gray-500 font-terminal">user_management.sh</span>
+                <span className="ml-4 text-xs text-gray-500 font-terminal">
+                  user_management.sh
+                </span>
               </div>
               <div className="terminal-body">
                 <h3 className="text-lg font-semibold text-white mb-4">
@@ -409,15 +464,18 @@ function Officer() {
                         key={u.id}
                         className="flex items-center justify-between p-3 rounded-lg bg-terminal-alt border border-gray-800"
                       >
-                        <div className="flex items-center gap-3">
+                        <Link
+                          to={`/@/${u.id}`}
+                          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                        >
                           {u.photo_url ? (
                             <img
                               src={u.photo_url}
                               alt={u.display_name}
-                              className="w-10 h-10 rounded-full border border-gray-600"
+                              className="w-10 h-10 rounded-full border border-gray-600 hover:border-matrix transition-colors"
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600">
+                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600 hover:border-matrix transition-colors">
                               <span className="text-gray-400 font-bold">
                                 {u.display_name.charAt(0).toUpperCase()}
                               </span>
@@ -425,20 +483,28 @@ function Officer() {
                           )}
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-200">{u.display_name}</span>
+                              <span className="font-medium text-gray-200 hover:text-matrix transition-colors">
+                                {u.display_name}
+                              </span>
                               {u.is_officer && (
                                 <span className="px-1.5 py-0.5 rounded text-xs bg-hack-purple/20 text-hack-purple border border-hack-purple/30">
                                   OFFICER
                                 </span>
                               )}
                             </div>
-                            <span className="text-xs text-gray-500">{u.email}</span>
+                            <span className="text-xs text-gray-500">
+                              {u.email}
+                            </span>
                           </div>
-                        </div>
+                        </Link>
 
                         <button
-                          onClick={() => toggleOfficerStatus(u.id, u.is_officer)}
-                          disabled={togglingOfficer === u.id || u.id === user?.id}
+                          onClick={() =>
+                            toggleOfficerStatus(u.id, u.is_officer)
+                          }
+                          disabled={
+                            togglingOfficer === u.id || u.id === user?.id
+                          }
                           className={`px-3 py-1.5 rounded-lg text-xs font-terminal transition-colors disabled:opacity-50 ${
                             u.is_officer
                               ? "bg-hack-red/10 text-hack-red border border-hack-red/30 hover:bg-hack-red/20"
@@ -471,17 +537,23 @@ function Officer() {
               <div className="terminal-dot red" />
               <div className="terminal-dot yellow" />
               <div className="terminal-dot green" />
-              <span className="ml-4 text-xs text-gray-500 font-terminal">recent_registrations.log</span>
+              <span className="ml-4 text-xs text-gray-500 font-terminal">
+                recent_registrations.log
+              </span>
             </div>
             <div className="terminal-body">
-              <h3 className="text-lg font-semibold text-white mb-4">Recent Registrations</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Recent Registrations
+              </h3>
 
               {loadingStats ? (
                 <div className="flex items-center justify-center py-8">
                   <Spinner className="animate-spin h-6 w-6 text-matrix" />
                 </div>
               ) : recentRegistrations.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No registrations yet</p>
+                <p className="text-gray-500 text-center py-8">
+                  No registrations yet
+                </p>
               ) : (
                 <div className="space-y-2">
                   {recentRegistrations.map((reg) => (
@@ -490,24 +562,33 @@ function Officer() {
                       className="flex items-center justify-between p-3 rounded-lg bg-terminal-alt border border-gray-800"
                     >
                       <div className="flex items-center gap-3">
-                        {reg.user?.photo_url ? (
-                          <img
-                            src={reg.user.photo_url}
-                            alt={reg.user.display_name}
-                            className="w-8 h-8 rounded-full border border-gray-600"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600">
-                            <span className="text-gray-400 text-xs font-bold">
-                              {reg.user?.display_name?.charAt(0).toUpperCase() || "?"}
-                            </span>
-                          </div>
-                        )}
+                        <Link to={`/@/${reg.user_id}`} className="shrink-0">
+                          {reg.user?.photo_url ? (
+                            <img
+                              src={reg.user.photo_url}
+                              alt={reg.user.display_name}
+                              className="w-8 h-8 rounded-full border border-gray-600 hover:border-matrix transition-colors"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600 hover:border-matrix transition-colors">
+                              <span className="text-gray-400 text-xs font-bold">
+                                {reg.user?.display_name
+                                  ?.charAt(0)
+                                  .toUpperCase() || "?"}
+                              </span>
+                            </div>
+                          )}
+                        </Link>
                         <div>
-                          <span className="font-medium text-gray-200">
+                          <Link
+                            to={`/@/${reg.user_id}`}
+                            className="font-medium text-gray-200 hover:text-matrix transition-colors"
+                          >
                             {reg.user?.display_name || "Unknown"}
+                          </Link>
+                          <span className="text-gray-500 mx-2">
+                            registered for
                           </span>
-                          <span className="text-gray-500 mx-2">registered for</span>
                           {reg.meeting ? (
                             <Link
                               to={`/meetings/${reg.meeting.slug}`}
@@ -534,7 +615,9 @@ function Officer() {
                         >
                           {reg.status.toUpperCase()}
                         </span>
-                        <span className="text-xs text-gray-500">{formatTime(reg.registered_at)}</span>
+                        <span className="text-xs text-gray-500">
+                          {formatTime(reg.registered_at)}
+                        </span>
                       </div>
                     </div>
                   ))}
